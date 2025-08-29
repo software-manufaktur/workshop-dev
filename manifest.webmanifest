@@ -1,0 +1,14 @@
+{
+  "name": "SeeYou Workshops",
+  "short_name": "SeeYou",
+  "description": "Terminverwaltung für Schmuck-Workshops",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "theme_color": "#AF9778",
+  "background_color": "#E6E6E6",
+  "icons": [
+    { "src": "static/icons/logo.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "static/icons/logo.png", "sizes": "512x512", "type": "image/png" }
+  ]
+}
