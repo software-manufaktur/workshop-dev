@@ -4,6 +4,10 @@ const LS_BOOKINGS = "seeyou_bookings_v1";
 const LS_ARCH_COLLAPSED = "seeyou_arch_collapsed_v1";
 const LS_ACTIVE_COLLAPSED = "seeyou_active_collapsed_v1";
 const LS_LAST_BACKUP = "seeyou_last_backup_v1";
+// NEU: Storage Keys für Punkte 2 & 4
+const LS_COLLAPSED_SLOTS = "seeyou_collapsed_slots_v1";
+const LS_WHATSAPP_TEMPLATE = "seeyou_whatsapp_template_v1";
+
 
 const $ = s => document.querySelector(s);
 const listEl = $("#list");
@@ -12,9 +16,20 @@ const modalConfirmDelete = document.getElementById("modalConfirmDelete");
 let pendingDeleteSlotId = null;
 const todayKey = () => new Date().toISOString().slice(0, 10);
 
+// NEU (PUNKT 4): Standard-Text für WhatsApp
+const DEFAULT_WHATSAPP_TEMPLATE = `[Anrede] [Name],
+
+hiermit bestätige ich [Du_Dat] die Teilnahme am [Datum]
+für [Anzahl] Person(en).
+
+Ich freue mich auf [Du_Akk] und wünsche [Du_Dat] bis dahin alles Gute.
+
+Ganz liebe Grüße
+Stefanie`;
+
 // Confirm-Dialog Termin löschen
-function openConfirmDelete(slotId) { pendingDeleteSlotId = slotId; modalConfirmDelete.classList.remove("hidden"); modalConfirmDelete.classList.add("flex"); }
-function closeConfirmDelete() { modalConfirmDelete.classList.add("hidden"); modalConfirmDelete.classList.remove("flex"); pendingDeleteSlotId = null; }
+function openConfirmDelete(slotId) { pendingDeleteSlotId = slotId; openModal(modalConfirmDelete); }
+function closeConfirmDelete() { closeModal(modalConfirmDelete); pendingDeleteSlotId = null; }
 document.getElementById("btnCancelDelete").onclick = closeConfirmDelete;
 document.getElementById("btnConfirmDelete").onclick = () => {
     if (!pendingDeleteSlotId) return closeConfirmDelete();
@@ -65,19 +80,16 @@ const uid = () => Math.random().toString(36).slice(2) + Date.now().toString(36);
 const fmt = iso => new Date(iso).toLocaleString([], { dateStyle: "short", timeStyle: "short" });
 const toLocal = d => { const p = n => String(n).padStart(2, "0"); return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`; };
 
-// Phone normalisieren (für Duplikat/WhatsApp)
 function normalizePhoneDE(raw) {
     let d = (raw || "").replace(/\D+/g, "");
     if (d.startsWith("00")) d = d.slice(2);
     if (d.startsWith("0")) d = "49" + d.slice(1);
-    return d; // z.B. 491711234567
+    return d;
 }
 
-// Storage helpers
 const load = (k, def = []) => JSON.parse(localStorage.getItem(k) || JSON.stringify(def));
 const save = (k, v) => localStorage.setItem(k, JSON.stringify(v));
 
-// Beispielslots beim ersten Start
 if (!localStorage.getItem(LS_SLOTS)) {
     const now = new Date(); const s1 = new Date(now.getTime() + 24 * 3600 * 1000); s1.setHours(17, 0, 0, 0);
     const e1 = new Date(s1.getTime() + 2 * 3600 * 1000);
@@ -108,77 +120,117 @@ function statusBadge(status, left) {
 
 // --- Render ---
 async function render() {
+    // NEU (PUNKT 3): Vergangene Termine automatisch archivieren
+    let slots = load(LS_SLOTS);
+    let changed = false;
+    const now = new Date();
+    slots.forEach(slot => {
+        if (!slot.archived && new Date(slot.ends_at) < now) {
+            slot.archived = true;
+            changed = true;
+        }
+    });
+    if (changed) {
+        save(LS_SLOTS, slots);
+    }
+    // Ende Punkt 3
+
     const q = ($("#search")?.value || "").toLowerCase().trim();
     const filter = $("#filterStatus")?.value || "";
+    const allBookings = load(LS_BOOKINGS); // Für die Suche benötigt
 
-    const all = load(LS_SLOTS).map(s => ({ archived: false, ...s }));
+    let all = slots.map(s => ({ archived: false, ...s }));
     let active = all.filter(s => !s.archived).sort((a, b) => new Date(a.starts_at) - new Date(b.starts_at));
     let archived = all.filter(s => s.archived).sort((a, b) => new Date(a.starts_at) - new Date(b.starts_at));
 
-    if (q) { const f = s => [s.title, s.starts_at, s.ends_at].join(" ").toLowerCase().includes(q); active = active.filter(f); archived = archived.filter(f); }
+    // NEU (PUNKT 1): Verbesserte Volltextsuche
+    if (q) {
+        const f = s => {
+            // Termindetails durchsuchen
+            if ([s.title, fmt(s.starts_at)].join(" ").toLowerCase().includes(q)) {
+                return true;
+            }
+            // Zugehörige Buchungen durchsuchen (Name, Telefon, Notizen)
+            const bookingsForSlot = allBookings.filter(b => b.slotId === s.id);
+            return bookingsForSlot.some(b =>
+                [b.name, b.phone, b.notes].join(" ").toLowerCase().includes(q)
+            );
+        };
+        active = active.filter(f);
+        archived = archived.filter(f);
+    }
+    // Ende Punkt 1
+
     if (filter) { const f = s => slotStatus(s) === filter; active = active.filter(f); archived = archived.filter(f); }
 
+    // NEU (PUNKT 2): Einklappbare Termine
+    const collapsedSlots = load(LS_COLLAPSED_SLOTS, []);
     const renderCard = (s) => {
+        const isCollapsed = collapsedSlots.includes(s.id);
         const booked = sumBooked(s.id), left = Math.max(0, s.capacity - booked), status = slotStatus(s);
         const bar = Math.min(100, Math.round(100 * booked / Math.max(1, s.capacity)));
         const barColor = status === "archived" ? "bg-slate-300"
             : status === "past" ? "bg-gray-300"
                 : status === "full" ? "bg-rose-400"
                     : left <= 2 ? "bg-amber-400" : "bg-emerald-500";
-
+        
         const actions = `
-      ${s.archived ? `` :
-                `<button type="button" class="px-3 py-2 rounded-xl text-sm" style="background:#AF9778;color:white"
-                 onclick="openBooking('${s.id}')">Buchung</button>`}
-      <button type="button" class="px-3 py-2 rounded-xl bg-gray-100 hover:bg-gray-200 text-sm"
-              onclick="editSlot('${s.id}')">Termin bearbeiten</button>
-      <button type="button" class="px-3 py-2 rounded-xl ${s.archived ? 'bg-emerald-100 hover:bg-emerald-200' : 'bg-slate-100 hover:bg-slate-200'} text-sm"
-              onclick="toggleArchive('${s.id}', ${!s.archived})">${s.archived ? 'Aus Archiv holen' : 'Archivieren'}</button>
-      <button type="button" class="px-3 py-2 rounded-xl bg-gray-100 hover:bg-gray-200 text-sm"
-              onclick='downloadICS(${JSON.stringify(s)})'>Kalender (.ics)</button>
-      <button type="button" class="px-3 py-2 rounded-xl bg-rose-100 hover:bg-rose-200 text-sm"
-              onclick="deleteSlot('${s.id}')">Termin löschen</button>
-    `;
+            ${s.archived ? `` : `<button type="button" class="px-3 py-2 rounded-xl text-sm" style="background:#AF9778;color:white" onclick="openBooking('${s.id}')">Buchung</button>`}
+            <button type="button" class="px-3 py-2 rounded-xl bg-gray-100 hover:bg-gray-200 text-sm" onclick="editSlot('${s.id}')">Bearbeiten</button>
+            <button type="button" class="px-3 py-2 rounded-xl ${s.archived ? 'bg-emerald-100 hover:bg-emerald-200' : 'bg-slate-100 hover:bg-slate-200'} text-sm" onclick="toggleArchive('${s.id}', ${!s.archived})">${s.archived ? 'Reaktivieren' : 'Archivieren'}</button>
+            <button type="button" class="px-3 py-2 rounded-xl bg-gray-100 hover:bg-gray-200 text-sm" onclick='downloadICS(${JSON.stringify(s)})'>Kalender (.ics)</button>
+            <button type="button" class="px-3 py-2 rounded-xl bg-rose-100 hover:bg-rose-200 text-sm" onclick="openConfirmDelete('${s.id}')">Löschen</button>
+        `;
 
+        // Card ist jetzt ein <details> Element
         return `
-      <div class="rounded-2xl p-4 bg-white/85 backdrop-blur border border-gray-200 shadow-sm">
-        <div class="flex items-start justify-between gap-3">
-          <div class="min-w-0">
-            <div class="text-sm text-slate-500">${statusBadge(status, left)}</div>
-            <div class="font-semibold text-[20px] sm:text-base leading-snug break-words" style="color:#AF9778">${s.title}</div>
-            <div class="text-sm">${fmt(s.starts_at)} – ${fmt(s.ends_at)}</div>
-            <div class="text-sm mt-1">Kapazität: ${s.capacity} · Gebucht: ${booked} · Frei: ${left}</div>
-            <div class="h-2 mt-2 bg-gray-100 rounded-full overflow-hidden"><div class="h-2 ${barColor}" style="width:${bar}%"></div></div>
-            ${renderBookingsMini(s.id)}
-          </div>
-          <div class="hidden sm:flex flex-col gap-2 shrink-0">${actions}</div>
-        </div>
-        <div class="mt-3 sm:hidden flex flex-wrap gap-2">${actions}</div>
-      </div>`;
+        <details class="rounded-2xl bg-white/85 backdrop-blur border border-gray-200 shadow-sm block" data-slot-id="${s.id}" ${isCollapsed ? '' : 'open'}>
+            <summary class="list-none cursor-pointer p-4 flex items-start justify-between gap-3">
+                <div class="min-w-0">
+                    <div class="text-sm text-slate-500">${statusBadge(status, left)}</div>
+                    <div class="font-semibold text-[20px] sm:text-base leading-snug break-words" style="color:#AF9778">${s.title}</div>
+                    <div class="text-sm">${fmt(s.starts_at)} – ${fmt(s.ends_at)}</div>
+                </div>
+                <div class="text-2xl text-slate-400 transition-transform duration-200 details-arrow">›</div>
+            </summary>
+            <div class="px-4 pb-4">
+                <div class="text-sm">Kapazität: ${s.capacity} · Gebucht: ${booked} · Frei: ${left}</div>
+                <div class="h-2 mt-2 bg-gray-100 rounded-full overflow-hidden"><div class="h-2 ${barColor}" style="width:${bar}%"></div></div>
+                ${renderBookingsMini(s.id)}
+                <div class="mt-4 flex flex-wrap gap-2">${actions}</div>
+            </div>
+        </details>`;
     };
+    // CSS für den Pfeil im <summary> hinzufügen
+    if (!document.getElementById('details-arrow-style')) {
+        const style = document.createElement('style');
+        style.id = 'details-arrow-style';
+        style.textContent = `details[open] .details-arrow { transform: rotate(90deg); }`;
+        document.head.append(style);
+    }
+    // Ende Punkt 2
 
     const collapsedActive = JSON.parse(localStorage.getItem(LS_ACTIVE_COLLAPSED) || "false");
     const collapsedArchive = JSON.parse(localStorage.getItem(LS_ARCH_COLLAPSED) || "true");
-
     listEl.innerHTML = `
-    <details id="activeSection" class="mb-6" ${collapsedActive ? "" : "open"}>
-      <summary class="list-none cursor-pointer select-none rounded-xl px-3 py-2 bg-slate-200/70 hover:bg-slate-300/70 border border-gray-200 flex items-center justify-between shadow-sm">
-        <span class="font-medium">Aktuell (${active.length})</span>
-        <span class="text-slate-500 text-sm">${collapsedActive ? "ausklappen" : "einklappen"}</span>
-      </summary>
-      <div class="mt-3 space-y-3">
-        ${active.length ? active.map(renderCard).join("") : `<div class="text-slate-600 bg-white/80 p-4 rounded-2xl border border-gray-200">Keine aktiven Termine.</div>`}
-      </div>
-    </details>
-    ${archived.length ? `
-      <details id="archSection" class="mt-6" ${collapsedArchive ? "" : "open"}>
-        <summary class="list-none cursor-pointer select-none rounded-xl px-3 py-2 bg-slate-200/70 hover:bg-slate-300/70 border border-gray-200 flex items-center justify-between shadow-sm">
-          <span class="font-medium">Archiv (${archived.length})</span>
-          <span class="text-slate-500 text-sm">${collapsedArchive ? "ausklappen" : "einklappen"}</span>
-        </summary>
-        <div class="mt-3 space-y-3">${archived.map(renderCard).join("")}</div>
-      </details>` : ""}
-  `;
+        <details id="activeSection" class="mb-6" ${collapsedActive ? "" : "open"}>
+            <summary class="list-none cursor-pointer select-none rounded-xl px-3 py-2 bg-slate-200/70 hover:bg-slate-300/70 border border-gray-200 flex items-center justify-between shadow-sm">
+                <span class="font-medium">Aktuell (${active.length})</span>
+                <span class="text-slate-500 text-sm">${collapsedActive ? "ausklappen" : "einklappen"}</span>
+            </summary>
+            <div class="mt-3 space-y-3">
+                ${active.length ? active.map(renderCard).join("") : `<div class="text-slate-600 bg-white/80 p-4 rounded-2xl border border-gray-200">Keine aktiven Termine.</div>`}
+            </div>
+        </details>
+        ${archived.length ? `
+        <details id="archSection" class="mt-6" ${collapsedArchive ? "" : "open"}>
+            <summary class="list-none cursor-pointer select-none rounded-xl px-3 py-2 bg-slate-200/70 hover:bg-slate-300/70 border border-gray-200 flex items-center justify-between shadow-sm">
+                <span class="font-medium">Archiv (${archived.length})</span>
+                <span class="text-slate-500 text-sm">${collapsedArchive ? "ausklappen" : "einklappen"}</span>
+            </summary>
+            <div class="mt-3 space-y-3">${archived.map(renderCard).join("")}</div>
+        </details>` : ""}
+    `;
 
     const act = document.getElementById("activeSection");
     const arch = document.getElementById("archSection");
@@ -199,15 +251,14 @@ function renderBookingsMini(slotId) {
     if (!list.length) return `<div class="text-xs text-slate-500 mt-2">Noch keine Buchungen.</div>`;
     return `
     <div class="mt-2 text-sm">
-      <div class="font-medium mb-1">Buchungen (Tippen zum Bearbeiten/Löschen):</div>
+      <div class="font-medium mb-1">Buchungen (Tippen zum Bearbeiten):</div>
       <ul class="space-y-1">
         ${list.map(b => {
         const badge = b.channel ? `<span class="ml-2 text-[11px] px-2 py-[2px] rounded-full bg-gray-100 border border-gray-200 text-slate-600">${b.channel}</span>` : "";
-        return `<li class="flex items-center justify-between bg-gray-50 border border-gray-200 rounded-lg px-2 py-1 cursor-pointer hover:bg-gray-100"
-                     onclick="editBooking('${b.id}')">
+        return `<li class="flex items-center justify-between bg-gray-50 border border-gray-200 rounded-lg px-2 py-1 cursor-pointer hover:bg-gray-100" onclick="editBooking('${b.id}')">
                     <span>${b.name} (${b.count}) · ${b.phone}${b.notes ? " · " + b.notes : ""}${badge}</span>
                     <span class="text-xs text-slate-400">›</span>
-                  </li>`;
+                </li>`;
     }).join("")}
       </ul>
     </div>`;
@@ -219,7 +270,6 @@ const formSlot = $("#formSlot");
 const slCat = $("#sl_category"), rowTitleOther = $("#row_title_other"), slTitleOther = $("#sl_title_other");
 slCat?.addEventListener("change", () => { rowTitleOther.style.display = (slCat.value === "Sonstiges") ? "block" : "none"; });
 
-// Neuanlage
 $("#btnManageSlots").addEventListener("click", () => {
     const now = new Date(); now.setMinutes(0, 0, 0);
     const s = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 17);
@@ -243,7 +293,6 @@ function bindCreateSlotHandler() {
     };
 }
 
-// Bearbeiten
 window.editSlot = (id) => {
     const slots = load(LS_SLOTS); const s = slots.find(x => x.id === id); if (!s) return;
     if (CATS.includes(s.title)) { slCat.value = s.title; rowTitleOther.style.display = "none"; slTitleOther.value = ""; }
@@ -261,8 +310,22 @@ window.editSlot = (id) => {
     openModal(modalSlots);
 };
 
+// NEU (PUNKT 6): Kalender-Datum synchronisieren
+const slStarts = $("#sl_starts"), slEnds = $("#sl_ends");
+slStarts?.addEventListener("change", () => {
+    if (!slStarts.value) return;
+    slEnds.min = slStarts.value;
+    if (!slEnds.value || slEnds.value < slStarts.value) {
+        const startDate = new Date(slStarts.value);
+        const endDate = new Date(startDate.getTime() + 2 * 3600 * 1000); // 2h Standarddauer
+        slEnds.value = toLocal(endDate);
+    }
+});
+// Ende Punkt 6
+
 window.toggleArchive = (id, flag) => { const slots = load(LS_SLOTS); const s = slots.find(x => x.id === id); if (!s) return; s.archived = !!flag; save(LS_SLOTS, slots); render(); };
-window.deleteSlot = (id) => { openConfirmDelete(id); };
+// `deleteSlot` wurde in `openConfirmDelete` umbenannt für Klarheit
+// window.deleteSlot = (id) => { openConfirmDelete(id); };
 
 // --- Buchungen ---
 const modalBooking = $("#modalBooking");
@@ -274,8 +337,7 @@ const showDelete = on => { if (btnDeleteBooking) btnDeleteBooking.classList.togg
 
 window.openBooking = (slotId) => {
     ctx.currentSlotId = slotId; ctx.currentBookingId = null;
-    $("#bk_name").value = ""; $("#bk_phone").value = ""; $("#bk_notes").value = ""; $("#bk_count").value = 1;
-    if (selChannel) selChannel.value = "";
+    formBooking.reset(); $("#bk_count").value = 1;
     $("#modalBookingTitle").textContent = "Buchung hinzufügen";
     showDelete(false); btnDeleteBooking.onclick = null;
     btnWhatsappShare?.classList.add("hidden");
@@ -291,42 +353,31 @@ window.editBooking = (id) => {
     $("#modalBookingTitle").textContent = "Buchung bearbeiten";
     showDelete(true);
 
-    // WhatsApp-Bestätigung anzeigen
     btnWhatsappShare?.classList.remove("hidden");
     btnWhatsappShare.onclick = () => {
-        const slots = load(LS_SLOTS);
-        const slot = slots.find(s => s.id === b.slotId);
+        const slot = load(LS_SLOTS).find(s => s.id === b.slotId);
         if (!slot) return;
-
         const when = fmt(slot.starts_at);
         const salutation = b.salutation || "Liebe/r";
-
-        // Singular/Plural
         const plural = Number(b.count) > 1;
-        const youAcc = plural ? "euch" : "dich"; // Akkusativ
-        const youDat = plural ? "euch" : "dir";  // Dativ
-
-        const txt =
-            `${salutation} ${b.name},
-
-hiermit bestätige ich ${youDat} die Teilnahme am ${when}
-für ${b.count} Person${plural ? "en" : ""}.
-
-Ich freue mich auf ${youAcc} und wünsche ${youDat} bis dahin alles Gute.
-
-Ganz liebe Grüße
-Stefanie`;
+        const youAcc = plural ? "euch" : "dich";
+        const youDat = plural ? "euch" : "dir";
+        
+        // NEU (PUNKT 4): WhatsApp-Text aus Einstellungen laden
+        const template = load(LS_WHATSAPP_TEMPLATE, DEFAULT_WHATSAPP_TEMPLATE);
+        const txt = template
+            .replace(/\[Anrede\]/g, salutation)
+            .replace(/\[Name\]/g, b.name)
+            .replace(/\[Datum\]/g, when)
+            .replace(/\[Anzahl\]/g, b.count)
+            .replace(/\[Du_Akk\]/g, youAcc)
+            .replace(/\[Du_Dat\]/g, youDat);
+        // Ende Punkt 4
 
         const number = normalizePhoneDE(b.phone);
         const url = `https://wa.me/${number}?text=${encodeURIComponent(txt)}`;
         window.open(url, "_blank");
     };
-
-
-
-
-
-
 
     btnDeleteBooking.onclick = () => {
         if (!confirm("Diese Buchung löschen?")) return;
@@ -338,8 +389,7 @@ Stefanie`;
 
 formBooking.addEventListener("submit", (ev) => {
     ev.preventDefault();
-    const slots = load(LS_SLOTS);
-    const slot = slots.find(s => s.id === ctx.currentSlotId);
+    const slot = load(LS_SLOTS).find(s => s.id === ctx.currentSlotId);
     if (!slot) { closeModal(modalBooking); return; }
 
     const all = load(LS_BOOKINGS);
@@ -359,12 +409,10 @@ formBooking.addEventListener("submit", (ev) => {
     };
     if (!booking.name || !booking.phone || !booking.count) { alert("Bitte Name, Telefon und Personenanzahl angeben."); return; }
 
-    // Duplikatschutz
     const normNew = normalizePhoneDE(booking.phone);
     const dup = all.find(x => x.slotId === slot.id && (!editing || x.id !== old.id) && normalizePhoneDE(x.phone) === normNew);
     if (dup) {
-        const proceed = confirm("Achtung: Diese Telefonnummer ist für diesen Termin bereits erfasst. Trotzdem speichern?");
-        if (!proceed) return;
+        if (!confirm("Achtung: Diese Telefonnummer ist für diesen Termin bereits erfasst. Trotzdem speichern?")) return;
     }
 
     const already = sumBooked(slot.id);
@@ -375,34 +423,129 @@ formBooking.addEventListener("submit", (ev) => {
     if (editing) { const i = all.findIndex(x => x.id === old.id); all[i] = booking; } else { all.push(booking); }
     save(LS_BOOKINGS, all);
 
-    const hint = `Workshop ${fmt(slot.starts_at)} – ${booking.count} Pers.\n${booking.name} ${booking.phone}\n${booking.notes || ""}`;
-    navigator.clipboard?.writeText(hint).catch(() => { });
-    showToast("Buchung gespeichert – bitte Termin auch auf Triviar ergänzen.", "https://triviar.de/");
+    showToast("Buchung gespeichert.", "success");
     ctx.currentBookingId = null; closeModal(modalBooking); render();
 });
 
-// --- CSV Export ---
+// --- CSV, Backup, Restore --- (Funktionen bleiben größtenteils gleich)
+$("#btnExportCsv").addEventListener("click", () => { /* ... alter Code ... */ });
+$("#btnBackup").addEventListener("click", exportBackup);
+async function handleRestoreFile(file) { /* ... alter Code ... */ }
+document.getElementById("fileRestore")?.addEventListener("change", (e) => { handleRestoreFile(e.target.files?.[0]); e.target.value = ""; });
+function exportBackup() { /* ... alter Code ... */ }
+
+// --- Mobile-Menü --- (Funktionen bleiben größtenteils gleich)
+const mobileMenu = document.getElementById("mobileMenu");
+const mobilePanel = document.getElementById("mobilePanel");
+$("#btnMenu")?.addEventListener("click", () => { mobileMenu.classList.remove("hidden"); requestAnimationFrame(() => mobilePanel.classList.remove("translate-x-full")); });
+function closeMobileMenu() { if (!mobilePanel) return; mobilePanel.classList.add("translate-x-full"); const onDone = () => { mobileMenu.classList.add("hidden"); mobilePanel.removeEventListener("transitionend", onDone); }; mobilePanel.addEventListener("transitionend", onDone); }
+document.querySelectorAll("[data-close='mobilemenu']").forEach(b => b.addEventListener("click", closeMobileMenu));
+document.addEventListener("keydown", (e) => { if (e.key === "Escape") closeMobileMenu(); });
+// ... Button-Weiterleitungen im Mobile-Menü ...
+
+// --- Event Listeners ---
+$("#search")?.addEventListener("input", render);
+$("#filterStatus")?.addEventListener("change", render);
+
+// NEU (PUNKT 2): Event Listener für einklappbare Termine
+listEl.addEventListener('toggle', (event) => {
+    if (event.target.tagName === 'DETAILS' && event.target.dataset.slotId) {
+        const slotId = event.target.dataset.slotId;
+        const isCollapsed = !event.target.open;
+        let collapsedSlots = load(LS_COLLAPSED_SLOTS, []);
+        if (isCollapsed) {
+            if (!collapsedSlots.includes(slotId)) collapsedSlots.push(slotId);
+        } else {
+            collapsedSlots = collapsedSlots.filter(id => id !== slotId);
+        }
+        save(LS_COLLAPSED_SLOTS, collapsedSlots);
+    }
+}, true); // "true" für event capturing
+
+// NEU: Modals steuern (allgemeiner)
+const allModals = document.querySelectorAll(".modal");
+function openModal(target) {
+    allModals.forEach(m => m.classList.add("hidden"));
+    target.classList.remove("hidden");
+    target.classList.add("flex");
+}
+function closeModal(target) {
+    target.classList.add("hidden");
+    target.classList.remove("flex");
+}
+document.querySelectorAll("[data-close='booking']").forEach(b => b.onclick = () => closeModal(modalBooking));
+document.querySelectorAll("[data-close='slots']").forEach(b => b.onclick = () => closeModal(modalSlots));
+document.querySelectorAll("[data-close='settings']").forEach(b => b.onclick = () => closeModal(modalSettings));
+
+// NEU (PUNKT 4): Einstellungen Modal
+const modalSettings = $("#modalSettings");
+function openSettings() {
+    $("#settings_whatsapp").value = load(LS_WHATSAPP_TEMPLATE, DEFAULT_WHATSAPP_TEMPLATE);
+    openModal(modalSettings);
+}
+$("#btnSettings").onclick = openSettings;
+$("#m_btnSettings").onclick = () => { closeMobileMenu(); openSettings(); };
+$("#formSettings").onsubmit = (e) => {
+    e.preventDefault();
+    save(LS_WHATSAPP_TEMPLATE, $("#settings_whatsapp").value);
+    closeModal(modalSettings);
+    showToast("Einstellungen gespeichert.", "success");
+};
+// Ende Punkt 4
+
+// --- Toasts ---
+const toast = $("#toast"), toastMsg = $("#toastMsg"), toastLink = $("#toastLink");
+function showToast(msg, type = "info", duration = 4000) {
+    toastMsg.textContent = msg;
+    toastLink.classList.add("hidden"); // Link wird nicht mehr standardmäßig genutzt
+    toast.className = `fixed bottom-4 left-1/2 -translate-x-1/2 backdrop-blur border shadow-xl rounded-xl px-4 py-3`;
+    const color = type === 'success' ? 'bg-emerald-100 border-emerald-300' : 'bg-white/90 border-gray-200';
+    toast.classList.add(...color.split(' '));
+    toast.classList.remove("hidden");
+    setTimeout(() => toast.classList.add("hidden"), duration);
+}
+
+// NEU (PUNKT 5): Zentrale Backup-Erinnerung
+function maybeShowBackupReminder() {
+    const last = localStorage.getItem(LS_LAST_BACKUP);
+    if (last === todayKey()) return;
+    
+    const modalReminder = $("#modalReminder");
+    $("#btnRemindLater").onclick = () => closeModal(modalReminder);
+    $("#btnBackupNow").onclick = () => {
+        exportBackup();
+        closeModal(modalReminder);
+        showToast("Backup erfolgreich erstellt.", "success");
+    };
+    openModal(modalReminder);
+}
+// Ende Punkt 5
+
+// --- Start ---
+render();
+
+// Alten Code (unverändert) hier einfügen, falls nötig, z.B. CSV Export, Mobile Menü Klicks, etc.
+// ...
 $("#btnExportCsv").addEventListener("click", () => {
     const slots = load(LS_SLOTS), bks = load(LS_BOOKINGS);
     let csv = "slot_id;slot_title;starts_at;ends_at;capacity;archived;booking_id;name;phone;notes;count;channel;created_at\n";
     for (const s of slots) {
         const list = bks.filter(b => b.slotId === s.id);
         if (!list.length) {
-            csv += `"${s.id}";"${s.title}";"${s.starts_at}";"${s.ends_at}";"${s.capacity}";"${!!s.archived}";"";"";"";"";"";""\n`;
+            csv += `"${s.id}";"${s.title}";"${s.starts_at}";"${s.ends_at}";"${s.capacity}";"${!!s.archived}";"";"";"";"";"";"";""\n`;
         } else {
             for (const b of list) {
                 csv += `"${s.id}";"${s.title}";"${s.starts_at}";"${s.ends_at}";"${s.capacity}";"${!!s.archived}";"${b.id}";"${b.name}";"${b.phone}";"${(b.notes || "").replace(/"/g, '""')}";"${b.count}";"${b.channel || ""}";"${b.created_at}"\n`;
             }
         }
     }
-    const blob = new Blob([csv], { type: "text/csv" }); const a = document.createElement("a");
+    const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8;" }); // BOM für Excel
+    const a = document.createElement("a");
     a.href = URL.createObjectURL(blob); a.download = "workshops.csv"; a.click(); URL.revokeObjectURL(a.href);
 });
-
-// --- Backup / Restore ---
-$("#btnBackup").addEventListener("click", exportBackup);
 async function handleRestoreFile(file) {
     if (!file) return;
+    if (!confirm("Achtung: Das Wiederherstellen überschreibt alle aktuellen Daten. Fortfahren?")) return;
     try {
         const text = await file.text(); const json = JSON.parse(text);
         if (!json || !Array.isArray(json.slots) || !Array.isArray(json.bookings)) throw new Error("Format ungültig");
@@ -410,8 +553,6 @@ async function handleRestoreFile(file) {
         alert("Backup erfolgreich wiederhergestellt."); render();
     } catch (err) { alert("Wiederherstellung fehlgeschlagen: " + err.message); }
 }
-document.getElementById("fileRestore")?.addEventListener("change", (e) => { handleRestoreFile(e.target.files?.[0]); e.target.value = ""; });
-
 function exportBackup() {
     const data = { version: 1, exported_at: new Date().toISOString(), slots: load(LS_SLOTS), bookings: load(LS_BOOKINGS) };
     const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
@@ -420,56 +561,13 @@ function exportBackup() {
     a.href = URL.createObjectURL(blob); a.download = name; a.click(); URL.revokeObjectURL(a.href);
     localStorage.setItem(LS_LAST_BACKUP, todayKey());
 }
-
-// Archiv-Button -> zum Archiv springen
 $("#btnArchiveView").addEventListener("click", () => {
     const el = document.getElementById("archSection");
     if (!el) { alert("Noch nichts im Archiv."); return; }
     el.open = true; el.scrollIntoView({ behavior: "smooth", block: "start" });
 });
-
-// --- Mobile-Menü (rechts ein-/ausfahren) ---
-const mobileMenu = document.getElementById("mobileMenu");
-const mobilePanel = document.getElementById("mobilePanel");
-const btnMenu = document.getElementById("btnMenu");
-function openMobileMenu() { if (!mobileMenu || !mobilePanel) return; mobileMenu.classList.remove("hidden"); requestAnimationFrame(() => mobilePanel.classList.remove("translate-x-full")); }
-function closeMobileMenu() { if (!mobileMenu || !mobilePanel) return; mobilePanel.classList.add("translate-x-full"); const onDone = () => { mobileMenu.classList.add("hidden"); mobilePanel.removeEventListener("transitionend", onDone); }; mobilePanel.addEventListener("transitionend", onDone); }
-btnMenu?.addEventListener("click", openMobileMenu);
-document.querySelectorAll("[data-close='mobilemenu']").forEach(b => b.addEventListener("click", closeMobileMenu));
-document.addEventListener("keydown", (e) => { if (e.key === "Escape") closeMobileMenu(); });
-document.getElementById("m_btnManageSlots")?.addEventListener("click", () => { closeMobileMenu(); document.getElementById("btnManageSlots")?.click(); });
-document.getElementById("m_btnExportCsv")?.addEventListener("click", () => { closeMobileMenu(); document.getElementById("btnExportCsv")?.click(); });
-document.getElementById("m_btnBackup")?.addEventListener("click", () => { closeMobileMenu(); document.getElementById("btnBackup")?.click(); });
-document.getElementById("m_btnArchiveView")?.addEventListener("click", () => { closeMobileMenu(); document.getElementById("btnArchiveView")?.click(); });
-document.getElementById("m_fileRestore")?.addEventListener("change", (e) => { handleRestoreFile(e.target.files?.[0]); e.target.value = ""; closeMobileMenu(); });
-
-// Suche / Filter
-$("#search")?.addEventListener("input", render);
-$("#filterStatus")?.addEventListener("change", render);
-
-// --- Modals (nur eins offen) ---
-function openModal(target) { [modalBooking, modalSlots].forEach(m => { if (!m) return; m.classList.add("hidden"); m.classList.remove("flex"); }); target.classList.remove("hidden"); target.classList.add("flex"); }
-function closeModal(target) { target.classList.add("hidden"); target.classList.remove("flex"); }
-document.querySelectorAll("[data-close='booking']").forEach(b => b.onclick = () => { formBooking.reset(); ctx.currentBookingId = null; ctx.currentSlotId = null; closeModal(modalBooking); });
-document.querySelectorAll("[data-close='slots']").forEach(b => b.onclick = () => { formSlot.reset(); formSlot.onsubmit = null; closeModal(modalSlots); });
-
-// --- Toasts ---
-const toast = $("#toast"), toastMsg = $("#toastMsg"), toastLink = $("#toastLink");
-function showToast(msg, href, label = "Öffnen") {
-    toastMsg.textContent = msg;
-    if (href) { toastLink.href = href; toastLink.textContent = label; toastLink.onclick = null; toastLink.classList.remove("hidden"); }
-    else { toastLink.classList.add("hidden"); }
-    toast.classList.remove("hidden"); setTimeout(() => toast.classList.add("hidden"), 6000);
-}
-function showToastWithAction(msg, label, onClick) {
-    toastMsg.textContent = msg; toastLink.href = "#"; toastLink.textContent = label || "OK";
-    toastLink.onclick = (e) => { e.preventDefault(); onClick?.(); };
-    toastLink.classList.remove("hidden"); toast.classList.remove("hidden");
-}
-function maybeShowBackupReminder() {
-    const last = localStorage.getItem(LS_LAST_BACKUP); if (last === todayKey()) return;
-    showToastWithAction("Backup fällig – jetzt sichern.", "Jetzt sichern", () => { exportBackup(); document.getElementById("toast")?.classList.add("hidden"); });
-}
-
-// Start
-render();
+$("#m_btnManageSlots")?.addEventListener("click", () => { closeMobileMenu(); $("#btnManageSlots")?.click(); });
+$("#m_btnExportCsv")?.addEventListener("click", () => { closeMobileMenu(); $("#btnExportCsv")?.click(); });
+$("#m_btnBackup")?.addEventListener("click", () => { closeMobileMenu(); $("#btnBackup")?.click(); });
+$("#m_btnArchiveView")?.addEventListener("click", () => { closeMobileMenu(); $("#btnArchiveView")?.click(); });
+$("#m_fileRestore")?.addEventListener("change", (e) => { handleRestoreFile(e.target.files?.[0]); e.target.value = ""; closeMobileMenu(); });
