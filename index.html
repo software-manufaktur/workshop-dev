@@ -105,12 +105,12 @@
     </div>
     <div class="flex flex-wrap gap-3 items-center">
       <form id="authForm" class="flex flex-wrap gap-2 items-center">
-        <input id="authEmail" type="email" required class="px-3 py-2 rounded-xl border border-graymid/60" placeholder="E-Mail fuer Magic Link">
+        <input id="authEmail" type="email" required class="px-3 py-2 rounded-xl border border-gray-400/60" placeholder="E-Mail fuer Magic Link">
         <button type="submit" class="px-3 py-2 rounded-xl bg-emerald-600 text-white text-sm">Anmelden</button>
       </form>
       <label class="flex items-center gap-2 text-sm">
         Konto/Team
-        <select id="teamSelect" class="px-3 py-2 rounded-xl border border-graymid/60 min-w-[140px]">
+        <select id="teamSelect" class="px-3 py-2 rounded-xl border border-gray-400/60 min-w-[140px]">
           <option value="">Lokaler Modus</option>
         </select>
       </label>
@@ -159,7 +159,7 @@
       <form id="formBooking" class="grid grid-cols-1 md:grid-cols-2 gap-3">
         <label class="flex flex-col gap-1">
           <span class="text-sm">Anrede</span>
-          <select id="bk_salutation" class="px-3 py-2 rounded-xl border border-graymid/60">
+          <select id="bk_salutation" class="px-3 py-2 rounded-xl border border-gray-400/60">
             <option value="Liebe/r">Liebe/r</option>
             <option value="Liebe">Liebe</option>
             <option value="Lieber">Lieber</option>
@@ -167,19 +167,19 @@
         </label>
         <label class="flex flex-col gap-1">
           <span class="text-sm">Name *</span>
-          <input required type="text" id="bk_name" class="px-3 py-2 rounded-xl border border-graymid/60">
+          <input required type="text" id="bk_name" class="px-3 py-2 rounded-xl border border-gray-400/60">
         </label>
         <label class="flex flex-col gap-1">
           <span class="text-sm">Telefon *</span>
-          <input required type="tel" id="bk_phone" class="px-3 py-2 rounded-xl border border-graymid/60">
+          <input required type="tel" id="bk_phone" class="px-3 py-2 rounded-xl border border-gray-400/60">
         </label>
         <label class="flex flex-col gap-1">
           <span class="text-sm">Personen *</span>
-          <input required type="number" min="1" step="1" id="bk_count" class="px-3 py-2 rounded-xl border border-graymid/60" value="1">
+          <input required type="number" min="1" step="1" id="bk_count" class="px-3 py-2 rounded-xl border border-gray-400/60" value="1">
         </label>
         <label class="flex flex-col gap-1">
           <span class="text-sm">Kontaktkanal</span>
-          <select id="bk_channel" class="px-3 py-2 rounded-xl border border-graymid/60">
+          <select id="bk_channel" class="px-3 py-2 rounded-xl border border-gray-400/60">
             <option value="">-</option>
             <option>Instagram</option>
             <option>WhatsApp</option>
@@ -191,12 +191,12 @@
         </label>
         <label class="md:col-span-2 flex flex-col gap-1">
           <span class="text-sm">Notiz</span>
-          <textarea id="bk_notes" rows="3" class="px-3 py-2 rounded-xl border border-graymid/60"></textarea>
+          <textarea id="bk_notes" rows="3" class="px-3 py-2 rounded-xl border border-gray-400/60"></textarea>
         </label>
         <div class="md:col-span-2 flex flex-col sm:flex-row gap-2">
           <button type="button" id="btnDeleteBooking" class="w-full sm:w-auto px-4 py-2 rounded-xl bg-rose-100 text-rose-700 hidden">Loeschen</button>
           <button type="button" id="btnWhatsappShare" class="w-full sm:w-auto px-4 py-2 rounded-xl bg-emerald-600 text-white hidden">WhatsApp</button>
-          <button type="button" data-close="booking" class="w-full sm:w-auto px-4 py-2 rounded-xl bg-graysoft">Abbrechen</button>
+          <button type="button" data-close="booking" class="w-full sm:w-auto px-4 py-2 rounded-xl bg-gray-200">Abbrechen</button>
           <button type="submit" class="w-full sm:w-auto px-4 py-2 rounded-xl text-white" style="background:#AF9778">Speichern</button>
         </div>
       </form>
@@ -213,7 +213,7 @@
       <form id="formSlot" class="grid grid-cols-1 md:grid-cols-2 gap-3">
         <label class="flex flex-col gap-1 md:col-span-2">
           <span class="text-sm">Kategorie</span>
-          <select id="sl_category" class="px-3 py-2 rounded-xl border border-graymid/60">
+          <select id="sl_category" class="px-3 py-2 rounded-xl border border-gray-400/60">
             <option>Workshop</option>
             <option>Kindergeburtstag</option>
             <option>JGA</option>
@@ -224,22 +224,22 @@
         </label>
         <label class="flex flex-col gap-1 md:col-span-2" id="row_title_other" style="display:none">
           <span class="text-sm">Titel (bei Sonstiges)</span>
-          <input type="text" id="sl_title_other" class="px-3 py-2 rounded-xl border border-graymid/60" placeholder="Eigener Titel">
+          <input type="text" id="sl_title_other" class="px-3 py-2 rounded-xl border border-gray-400/60" placeholder="Eigener Titel">
         </label>
         <label class="flex flex-col gap-1">
           <span class="text-sm">Kapazitaet *</span>
-          <input type="number" min="1" step="1" id="sl_capacity" class="px-3 py-2 rounded-xl border border-graymid/60" value="10" required>
+          <input type="number" min="1" step="1" id="sl_capacity" class="px-3 py-2 rounded-xl border border-gray-400/60" value="10" required>
         </label>
         <label class="flex flex-col gap-1">
           <span class="text-sm">Start *</span>
-          <input type="datetime-local" id="sl_starts" class="px-3 py-2 rounded-xl border border-graymid/60" required>
+          <input type="datetime-local" id="sl_starts" class="px-3 py-2 rounded-xl border border-gray-400/60" required>
         </label>
         <label class="flex flex-col gap-1">
           <span class="text-sm">Ende *</span>
-          <input type="datetime-local" id="sl_ends" class="px-3 py-2 rounded-xl border border-graymid/60" required>
+          <input type="datetime-local" id="sl_ends" class="px-3 py-2 rounded-xl border border-gray-400/60" required>
         </label>
         <div class="md:col-span-2 flex flex-col sm:flex-row gap-2">
-          <button type="button" data-close="slots" class="w-full sm:w-auto px-4 py-2 rounded-xl bg-graysoft">Abbrechen</button>
+          <button type="button" data-close="slots" class="w-full sm:w-auto px-4 py-2 rounded-xl bg-gray-200">Abbrechen</button>
           <button type="submit" class="w-full sm:w-auto px-4 py-2 rounded-xl text-white" style="background:#AF9778">Speichern</button>
         </div>
       </form>
@@ -257,7 +257,7 @@
         </div>
       </div>
       <div class="mt-5 flex justify-end gap-2">
-        <button id="btnCancelDelete" class="px-4 py-2 rounded-xl bg-graysoft">Abbrechen</button>
+        <button id="btnCancelDelete" class="px-4 py-2 rounded-xl bg-gray-200">Abbrechen</button>
         <button id="btnConfirmDelete" class="px-4 py-2 rounded-xl bg-rose-600 text-white">Endgueltig loeschen</button>
       </div>
     </div>
@@ -270,7 +270,7 @@
       <p class="text-sm text-slate-700 mb-4">Datei: <span id="importFileName" class="font-medium">-</span></p>
       <p class="text-sm text-slate-700 mb-4">Inhalt: <span id="importCounts" class="font-medium">-</span></p>
       <div class="flex justify-end gap-2">
-        <button id="btnCancelImport" class="px-4 py-2 rounded-xl bg-graysoft">Abbrechen</button>
+        <button id="btnCancelImport" class="px-4 py-2 rounded-xl bg-gray-200">Abbrechen</button>
         <button id="btnConfirmImport" class="px-4 py-2 rounded-xl bg-emerald-600 text-white">Importieren</button>
       </div>
       <p class="text-xs text-slate-500 mt-3">Import uebernimmt alle Termine und Buchungen. Falls vorhanden, wird die aktive Organisation beibehalten.</p>

@@ -546,12 +546,9 @@
   qsa("[data-close='booking']").forEach((b) => b.addEventListener("click", () => closeModal(modalBooking)));
   qsa("[data-close='slots']").forEach((b) => b.addEventListener("click", () => closeModal(modalSlots)));
   qsa("[data-close='backup']").forEach((b) => b.addEventListener("click", () => closeModal(modalBackupImport)));
-  qsa("[data-close='booking']").forEach((b) => b.addEventListener("click", () => closeModal(modalBooking)));
-  qsa("[data-close='slots']").forEach((b) => b.addEventListener("click", () => closeModal(modalSlots)));
-  qsa("[data-close='backup']").forEach((b) => b.addEventListener("click", () => closeModal(modalBackupImport)));
 
   /* ---------- Domain helpers ---------- */
-  const CATS = ["Workshop", "Kurs", "Event", "Seminar", "Private Gruppe", "Sonstiges"];
+  const CATS = ["Workshop", "Kindergeburtstag", "JGA", "Maedelsabend", "Weihnachtsfeier", "Kurs", "Event", "Seminar", "Private Gruppe", "Sonstiges"];
   const CHANNELS = ["", "Instagram", "WhatsApp", "E-Mail", "Triviar", "Telefonisch", "Persoenlich"];
   const uid = () => Math.random().toString(36).slice(2) + Date.now().toString(36);
   const normalizePhoneDE = (raw) => {

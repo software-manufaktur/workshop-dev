@@ -85,22 +85,16 @@ async function networkFirst(req) {
 async function cacheFirst(req, fallbackToNetwork = false) {
   const cached = await caches.match(req, { ignoreSearch: true });
   if (cached) return cached;
-  if (!fallbackToNetwork) {
-    try {
-      const res = await fetch(req);
-      const cache = await caches.open(RUNTIME_CACHE);
-      cache.put(req, res.clone());
-      return res;
-    } catch (_err) {
-      return caches.match("./index.html");
-    }
-  }
+  
   try {
     const res = await fetch(req);
     const cache = await caches.open(RUNTIME_CACHE);
     cache.put(req, res.clone());
     return res;
   } catch (_err) {
-    return caches.match("./index.html");
+    if (fallbackToNetwork) {
+      return caches.match("./index.html");
+    }
+    throw _err;
   }
 }
