@@ -704,14 +704,72 @@
   }
 
   function bindDynamicListHandlers() {
-    qsa("[data-open-booking]").forEach((btn) => btn.addEventListener("click", () => openBooking(btn.dataset.openBooking)));
-    qsa("[data-edit-slot]").forEach((btn) => btn.addEventListener("click", () => editSlot(btn.dataset.editSlot)));
-    qsa("[data-toggle-archive]").forEach((btn) =>
-      btn.addEventListener("click", () => toggleArchive(btn.dataset.toggleArchive, btn.dataset.flag === "true"))
+    qsa("[data-open-booking]").forEach((btn) =>
+      btn.addEventListener("click", (e) => {
+        e.preventDefault();
+        try {
+          openBooking(btn.dataset.openBooking);
+        } catch (err) {
+          console.warn("openBooking failed", err);
+          showToast("Aktion fehlgeschlagen", "error");
+        }
+      })
     );
-    qsa("[data-delete-slot]").forEach((btn) => btn.addEventListener("click", () => confirmDeleteSlot(btn.dataset.deleteSlot)));
-    qsa("[data-ics]").forEach((btn) => btn.addEventListener("click", () => downloadICS(btn.dataset.ics)));
-    qsa("[data-booking]").forEach((li) => li.addEventListener("click", () => editBooking(li.dataset.booking)));
+    qsa("[data-edit-slot]").forEach((btn) =>
+      btn.addEventListener("click", (e) => {
+        e.preventDefault();
+        try {
+          editSlot(btn.dataset.editSlot);
+        } catch (err) {
+          console.warn("editSlot failed", err);
+          showToast("Aktion fehlgeschlagen", "error");
+        }
+      })
+    );
+    qsa("[data-toggle-archive]").forEach((btn) =>
+      btn.addEventListener("click", (e) => {
+        e.preventDefault();
+        try {
+          toggleArchive(btn.dataset.toggleArchive, btn.dataset.flag === "true");
+        } catch (err) {
+          console.warn("toggleArchive failed", err);
+          showToast("Aktion fehlgeschlagen", "error");
+        }
+      })
+    );
+    qsa("[data-delete-slot]").forEach((btn) =>
+      btn.addEventListener("click", (e) => {
+        e.preventDefault();
+        try {
+          confirmDeleteSlot(btn.dataset.deleteSlot);
+        } catch (err) {
+          console.warn("deleteSlot failed", err);
+          showToast("Aktion fehlgeschlagen", "error");
+        }
+      })
+    );
+    qsa("[data-ics]").forEach((btn) =>
+      btn.addEventListener("click", (e) => {
+        e.preventDefault();
+        try {
+          downloadICS(btn.dataset.ics);
+        } catch (err) {
+          console.warn("ics failed", err);
+          showToast("Aktion fehlgeschlagen", "error");
+        }
+      })
+    );
+    qsa("[data-booking]").forEach((li) =>
+      li.addEventListener("click", (e) => {
+        e.preventDefault();
+        try {
+          editBooking(li.dataset.booking);
+        } catch (err) {
+          console.warn("editBooking failed", err);
+          showToast("Aktion fehlgeschlagen", "error");
+        }
+      })
+    );
 
     const act = qs("#activeSection");
     const arch = qs("#archSection");
