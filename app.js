@@ -279,10 +279,22 @@
   let authUser = null;
 
   async function sendMagicLink(email) {
-    if (!supabaseClient) throw new Error("Supabase nicht konfiguriert");
-    const { error } = await supabaseClient.auth.signInWithOtp({ email, options: { shouldCreateUser: true } });
-    if (error) throw error;
-  }
+  if (!supabaseClient) throw new Error("Supabase nicht konfiguriert");
+
+  // sorgt dafür, dass der Magic Link IMMER zur App zurückführt
+  const redirectTo = `${location.origin}${location.pathname}`;
+
+  const { error } = await supabaseClient.auth.signInWithOtp({
+    email,
+    options: {
+      shouldCreateUser: true,
+      emailRedirectTo: redirectTo
+    }
+  });
+
+  if (error) throw error;
+}
+
 
   async function loadSession() {
     if (!supabaseClient) return null;
