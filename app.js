@@ -1,12 +1,12 @@
-/* Workshop PWA - offline-first with IndexedDB, Supabase sync, and backups */
+/* Workshop App - Offline-first PWA with Supabase Sync and Backups */
 (function () {
   "use strict";
 
-  const APP_VERSION = "1.1.0";
+  const APP_VERSION = "1.2.0";
   const DB_NAME = "workshop-app";
-  const DB_VERSION = 2;
+  const DB_VERSION = 3;
   const MAX_LOCAL_BACKUPS = 10;
-  const SYNC_DEBOUNCE_MS = 800;
+  const SYNC_DEBOUNCE_MS = 1200;
 
   const qs = (s) => document.querySelector(s);
   const qsa = (s) => Array.from(document.querySelectorAll(s));
@@ -27,20 +27,15 @@
     supabaseConfig.SUPABASE_ANON_KEY &&
     !String(supabaseConfig.SUPABASE_URL).includes("YOUR-PROJECT");
   const supabaseClient = supabaseReady
-  ? window.supabase.createClient(
-      supabaseConfig.SUPABASE_URL,
-      supabaseConfig.SUPABASE_ANON_KEY,
-      {
+    ? window.supabase.createClient(supabaseConfig.SUPABASE_URL, supabaseConfig.SUPABASE_ANON_KEY, {
         auth: {
           persistSession: true,
           autoRefreshToken: true,
           detectSessionInUrl: true,
           flowType: "pkce",
         },
-      }
-    )
-  : null;
-
+      })
+    : null;
 
   const stateDefaults = {
     slots: [],
@@ -56,9 +51,9 @@
       lastSyncError: null,
       idbVersion: DB_VERSION,
     },
-    activeOrgId: "default",
+    activeOrgId: "local",
+    orgs: [],
     user: null,
-    serverBackupsEnabled: false,
   };
 
   let memoryState = null;
@@ -67,10 +62,10 @@
   let syncTimer = null;
   let flushInFlight = false;
   let updateWaitingWorker = null;
-
+  let authUser = null;
   const ctx = { currentSlotId: null, currentBookingId: null, importPreview: null };
 
-  // ----- IndexedDB layer -----
+  /* ---------- IndexedDB Layer ---------- */
   function openDb() {
     if (dbPromise) return dbPromise;
     dbPromise = new Promise((resolve, reject) => {
@@ -104,7 +99,6 @@
   async function readStateFromDb() {
     return withStore("kv", "readonly", (store) => store.get("state")).then((req) => req?.result?.value || null);
   }
-
   async function writeStateToDb(state) {
     return withStore("kv", "readwrite", (store) => store.put({ key: "state", value: state }));
   }
@@ -119,7 +113,7 @@
       slots = slotsRaw ? JSON.parse(slotsRaw) : [];
       bookings = bookingsRaw ? JSON.parse(bookingsRaw) : [];
     } catch (err) {
-      console.warn("Migration failed, falling back to empty state", err);
+      console.warn("Migration failed", err);
       return null;
     }
     const migrated = { ...clone(stateDefaults), slots, bookings };
@@ -141,20 +135,13 @@
       { id: uid(), title: "Schmuck-Workshop", starts_at: s2.toISOString(), ends_at: e2.toISOString(), capacity: 8, archived: false },
     ];
   }
-
   async function getState() {
     if (memoryState) return clone(memoryState);
     const fromDb = await readStateFromDb();
     if (fromDb) {
-      const normalized = {
-        ...clone(stateDefaults),
-        ...fromDb,
-        meta: { ...stateDefaults.meta, ...(fromDb.meta || {}) },
-      };
+      const normalized = { ...clone(stateDefaults), ...fromDb, meta: { ...stateDefaults.meta, ...(fromDb.meta || {}) } };
       memoryState = normalized;
-      if (!deepEqual(fromDb, normalized)) {
-        await saveState(normalized, { skipSnapshot: true });
-      }
+      if (!deepEqual(fromDb, normalized)) await saveState(normalized, { skipSnapshot: true });
       return clone(normalized);
     }
     const migrated = await migrateFromLocalStorage();
@@ -185,11 +172,7 @@
 
   async function exportBackup() {
     const current = await getState();
-    return {
-      version: 1,
-      exported_at: new Date().toISOString(),
-      state: current,
-    };
+    return { version: 1, exported_at: new Date().toISOString(), state: current };
   }
 
   function validateStateShape(state) {
@@ -212,14 +195,12 @@
     await withStore("backups", "readwrite", (store) => store.add(entry));
     await pruneBackups();
   }
-
   async function pruneBackups() {
     const items = await listLocalBackups();
     if (items.length <= MAX_LOCAL_BACKUPS) return;
     const toDelete = items.slice(MAX_LOCAL_BACKUPS);
     await withStore("backups", "readwrite", (store) => toDelete.forEach((b) => store.delete(b.id)));
   }
-
   async function listLocalBackups() {
     const db = await openDb();
     return new Promise((resolve, reject) => {
@@ -227,10 +208,7 @@
       const store = tx.objectStore("backups");
       const idx = store.index("created_at");
       const req = idx.getAll();
-      req.onsuccess = () => {
-        const res = (req.result || []).sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
-        resolve(res);
-      };
+      req.onsuccess = () => resolve((req.result || []).sort((a, b) => new Date(b.created_at) - new Date(a.created_at)));
       req.onerror = () => reject(req.error);
     });
   }
@@ -242,7 +220,6 @@
       clearReq.onsuccess = () => store.add(payload);
     });
   }
-
   async function queueGetLatest() {
     const db = await openDb();
     return new Promise((resolve, reject) => {
@@ -251,18 +228,14 @@
       const req = store.getAll();
       req.onsuccess = () => {
         const list = req.result || [];
-        if (!list.length) return resolve(null);
-        const latest = list.sort((a, b) => new Date(b.created_at) - new Date(a.created_at))[0];
-        resolve(latest);
+        resolve(list.sort((a, b) => new Date(b.created_at) - new Date(a.created_at))[0] || null);
       };
       req.onerror = () => reject(req.error);
     });
   }
-
   async function queueClear() {
     await withStore("queue", "readwrite", (store) => store.clear());
   }
-
   async function queueLength() {
     const db = await openDb();
     return new Promise((resolve, reject) => {
@@ -274,56 +247,68 @@
     });
   }
 
-  const storage = {
-    getState,
-    saveState,
-    exportBackup,
-    importBackup,
-    listLocalBackups,
-    addLocalSnapshot,
-    queueSet,
-    queueClear,
-    queueLength,
-    queueGetLatest,
-  };
-
-  // ----- Supabase + sync -----
-  let authUser = null;
+  const storage = { getState, saveState, exportBackup, importBackup, listLocalBackups, addLocalSnapshot, queueSet, queueClear, queueLength, queueGetLatest };
+  /* ---------- Supabase & Sync ---------- */
+  async function handleAuthCallback() {
+    if (!supabaseClient) return;
+    const url = new URL(window.location.href);
+    const code = url.searchParams.get("code");
+    if (code) {
+      await supabaseClient.auth.exchangeCodeForSession(code).catch((err) => console.warn("Auth exchange failed", err));
+      url.searchParams.delete("code");
+      window.history.replaceState({}, document.title, url.toString());
+    } else {
+      await supabaseClient.auth.getSession();
+    }
+  }
 
   async function sendMagicLink(email) {
-  if (!supabaseClient) throw new Error("Supabase nicht konfiguriert");
-
-  // sorgt dafür, dass der Magic Link IMMER zur App zurückführt
-  const redirectTo = `${location.origin}${location.pathname}`;
-
-  const { error } = await supabaseClient.auth.signInWithOtp({
-    email,
-    options: {
-      shouldCreateUser: true,
-      emailRedirectTo: redirectTo
-    }
-  });
-
-  if (error) throw error;
-}
-
+    if (!supabaseClient) throw new Error("Supabase nicht konfiguriert");
+    const redirectTo = `${location.origin}${location.pathname}`;
+    const { error } = await supabaseClient.auth.signInWithOtp({
+      email,
+      options: { shouldCreateUser: true, emailRedirectTo: redirectTo },
+    });
+    if (error) throw error;
+  }
 
   async function loadSession() {
     if (!supabaseClient) return null;
     const { data } = await supabaseClient.auth.getSession();
     authUser = data?.session?.user || null;
+    if (authUser) await refreshOrgMembership();
+    await updateUserInState(authUser);
     return authUser;
   }
 
   function subscribeAuth() {
     if (!supabaseClient) return;
-    supabaseClient.auth.onAuthStateChange((_event, session) => {
+    supabaseClient.auth.onAuthStateChange(async (_event, session) => {
       authUser = session?.user || null;
-      updateUserInState(authUser);
+      await refreshOrgMembership();
+      await updateUserInState(authUser);
       renderAuth();
       pullLatestFromServer();
       scheduleSync();
     });
+  }
+
+  async function refreshOrgMembership() {
+    if (!supabaseClient || !authUser) return;
+    const { data, error } = await supabaseClient.from("org_members").select("org_id, role, orgs(name)").eq("user_id", authUser.id);
+    if (error) {
+      console.warn("org_members fetch failed", error);
+      return;
+    }
+    const orgs = (data || []).map((o) => ({ id: o.org_id, name: o.orgs?.name || "Team", role: o.role || "user" }));
+    await updateState(
+      (draft) => {
+        draft.orgs = orgs;
+        if (!orgs.length) draft.activeOrgId = "local";
+        else if (!orgs.find((o) => o.id === draft.activeOrgId)) draft.activeOrgId = orgs[0].id;
+      },
+      { skipSync: true, skipSnapshot: true }
+    );
   }
 
   async function updateUserInState(user) {
@@ -337,6 +322,7 @@
   async function pullLatestFromServer() {
     if (!supabaseClient || !authUser) return;
     const state = await storage.getState();
+    if (!state.activeOrgId || state.activeOrgId === "local") return;
     const { data, error } = await supabaseClient
       .from("workshop_states")
       .select("*")
@@ -353,17 +339,21 @@
     const remoteUpdated = data.updated_at ? new Date(data.updated_at).getTime() : 0;
     if (remoteUpdated > localUpdated) {
       const merged = { ...clone(stateDefaults), ...data.data, meta: { ...state.meta, lastSyncAt: data.updated_at, lastSyncError: null } };
+      merged.activeOrgId = state.activeOrgId;
+      merged.orgs = state.orgs;
+      merged.user = state.user;
       await storage.saveState(merged);
       memoryState = merged;
       renderAll();
-      showToast("Remote Daten geladen (Server war neuer)", "success");
+      showToast("Cloud-Daten wurden geladen", "info");
     }
   }
 
   async function pushStateToServer(state) {
     if (!supabaseClient || !authUser) return;
+    if (!state.activeOrgId || state.activeOrgId === "local") return;
     const payload = {
-      org_id: state.activeOrgId || "default",
+      org_id: state.activeOrgId,
       data: { ...state, meta: { ...state.meta, lastSyncAt: null } },
       updated_at: new Date().toISOString(),
       updated_by: authUser.id,
@@ -373,14 +363,15 @@
     const next = { ...clone(state), meta: { ...state.meta, lastSyncAt: payload.updated_at, lastSyncError: null } };
     await storage.saveState(next, { skipSnapshot: true });
     memoryState = next;
+    await pushServerBackup(next);
     renderDebug();
-    if (next.serverBackupsEnabled) await pushServerBackup(next);
     return payload.updated_at;
   }
 
   async function pushServerBackup(state) {
     if (!supabaseClient || !authUser) return;
-    const snapshot = { org_id: state.activeOrgId || "default", snapshot: clone(state), created_at: new Date().toISOString(), created_by: authUser.id };
+    if (!state.activeOrgId || state.activeOrgId === "local") return;
+    const snapshot = { org_id: state.activeOrgId, snapshot: clone(state), created_at: new Date().toISOString(), created_by: authUser.id };
     const { error } = await supabaseClient.from("backups").insert(snapshot);
     if (error) console.warn("Server backup failed", error);
   }
@@ -388,6 +379,7 @@
   async function fetchServerBackups() {
     if (!supabaseClient || !authUser) return [];
     const state = await storage.getState();
+    if (!state.activeOrgId || state.activeOrgId === "local") return [];
     const { data, error } = await supabaseClient
       .from("backups")
       .select("*")
@@ -413,7 +405,6 @@
     scheduleSync();
   }
 
-  // ----- Sync queue -----
   async function scheduleSync() {
     if (syncTimer) clearTimeout(syncTimer);
     syncTimer = setTimeout(flushQueue, SYNC_DEBOUNCE_MS);
@@ -447,12 +438,10 @@
     scheduleSync();
   });
   window.addEventListener("offline", renderStatus);
-
-  // ----- UI helpers -----
+  /* ---------- UI Helpers ---------- */
   const toast = qs("#toast");
   const toastMsg = qs("#toastMsg");
   const toastLink = qs("#toastLink");
-
   function showToast(msg, type = "info", link) {
     if (!toast) return;
     toastMsg.textContent = msg;
@@ -473,18 +462,16 @@
     toast.classList.remove("hidden");
     setTimeout(() => toast.classList.add("hidden"), 6000);
   }
-
   function setFocus(el) {
     if (!el) return;
     requestAnimationFrame(() => el.focus());
   }
 
-  // ----- Modal helpers -----
+  /* ---------- Modal Helpers ---------- */
   const modalBooking = qs("#modalBooking");
   const modalSlots = qs("#modalSlots");
   const modalConfirmDelete = qs("#modalConfirmDelete");
   const modalBackupImport = qs("#modalBackupImport");
-
   function openModal(el) {
     if (!el) return;
     [modalBooking, modalSlots, modalBackupImport].forEach((m) => {
@@ -500,14 +487,11 @@
     el.classList.add("hidden");
     el.classList.remove("flex");
   }
-
   document.addEventListener("keydown", (e) => {
-    if (e.key === "Escape") {
-      [modalBooking, modalSlots, modalConfirmDelete, modalBackupImport].forEach((m) => closeModal(m));
-    }
+    if (e.key === "Escape") [modalBooking, modalSlots, modalConfirmDelete, modalBackupImport].forEach((m) => closeModal(m));
   });
 
-  // ----- Domain helpers -----
+  /* ---------- Domain helpers ---------- */
   const CATS = ["Schmuck-Workshop", "Kindergeburtstag", "JGA", "Maedelsabend", "Weihnachtsfeier", "Sonstiges"];
   const CHANNELS = ["", "Instagram", "WhatsApp", "E-Mail", "Triviar", "Telefonisch", "Persoenlich"];
   const uid = () => Math.random().toString(36).slice(2) + Date.now().toString(36);
@@ -517,7 +501,8 @@
     if (d.startsWith("0")) d = "49" + d.slice(1);
     return d;
   };
-
+  const bookingsBySlot = (slotId, state) => (state.bookings || []).filter((b) => b.slotId === slotId);
+  const sumBooked = (slotId, state) => bookingsBySlot(slotId, state).reduce((n, b) => n + Number(b.count || 0), 0);
   function slotStatus(slot, state) {
     if (slot.archived) return "archived";
     const booked = sumBooked(slot.id, state);
@@ -528,8 +513,16 @@
     return "open";
   }
 
-  const bookingsBySlot = (slotId, state) => (state.bookings || []).filter((b) => b.slotId === slotId);
-  const sumBooked = (slotId, state) => bookingsBySlot(slotId, state).reduce((n, b) => n + Number(b.count || 0), 0);
+  /* ---------- Rendering ---------- */
+  async function renderAll() {
+    const state = await storage.getState();
+    render(state);
+    renderStatus();
+    renderAuth();
+    renderLocalBackups();
+    renderServerBackups();
+    renderDebug();
+  }
 
   function statusBadge(status, left) {
     if (status === "archived") return `<span class="px-2 py-1 rounded-lg bg-slate-300 text-xs">archiv</span>`;
@@ -549,8 +542,7 @@
           ${list
             .map((b) => {
               const badge = b.channel ? `<span class="ml-2 text-[11px] px-2 py-[2px] rounded-full bg-gray-100 border border-gray-200 text-slate-600">${b.channel}</span>` : "";
-              return `<li class="flex items-center justify-between bg-gray-50 border border-gray-200 rounded-lg px-2 py-1 cursor-pointer hover:bg-gray-100"
-                       data-booking="${b.id}">
+              return `<li class="flex items-center justify-between bg-gray-50 border border-gray-200 rounded-lg px-2 py-1 cursor-pointer hover:bg-gray-100" data-booking="${b.id}">
                         <span>${b.name} (${b.count}) - ${b.phone}${b.notes ? " - " + b.notes : ""}${badge}</span>
                         <span class="text-xs text-slate-400">></span>
                       </li>`;
@@ -558,17 +550,6 @@
             .join("")}
         </ul>
       </div>`;
-  }
-
-  // ----- Render -----
-  async function renderAll() {
-    const state = await storage.getState();
-    render(state);
-    renderAuth();
-    renderStatus();
-    renderLocalBackups();
-    renderServerBackups();
-    renderDebug();
   }
 
   async function render(state) {
@@ -579,10 +560,10 @@
     let active = all.filter((s) => !s.archived).sort((a, b) => new Date(a.starts_at) - new Date(b.starts_at));
     let archived = all.filter((s) => s.archived).sort((a, b) => new Date(a.starts_at) - new Date(b.starts_at));
 
+    const matchSearch = (s) => [s.title, s.starts_at, s.ends_at].join(" ").toLowerCase().includes(search);
     if (search) {
-      const f = (s) => [s.title, s.starts_at, s.ends_at].join(" ").toLowerCase().includes(search);
-      active = active.filter(f);
-      archived = archived.filter(f);
+      active = active.filter(matchSearch);
+      archived = archived.filter(matchSearch);
     }
     if (filter) {
       const f = (s) => slotStatus(s, state) === filter;
@@ -605,7 +586,6 @@
           : left <= 2
           ? "bg-amber-400"
           : "bg-emerald-500";
-
       const actions = `
         ${s.archived ? "" : `<button type="button" class="px-3 py-2 rounded-xl text-sm" style="background:#AF9778;color:white" data-open-booking="${s.id}">Buchung</button>`}
         <button type="button" class="px-3 py-2 rounded-xl bg-gray-100 hover:bg-gray-200 text-sm" data-edit-slot="${s.id}">Termin bearbeiten</button>
@@ -613,7 +593,6 @@
         <button type="button" class="px-3 py-2 rounded-xl bg-gray-100 hover:bg-gray-200 text-sm" data-ics="${s.id}">Kalender (.ics)</button>
         <button type="button" class="px-3 py-2 rounded-xl bg-rose-100 hover:bg-rose-200 text-sm" data-delete-slot="${s.id}">Termin loeschen</button>
       `;
-
       return `
         <div class="rounded-2xl p-4 bg-white/85 backdrop-blur border border-gray-200 shadow-sm">
           <div class="flex items-start justify-between gap-3">
@@ -631,43 +610,34 @@
         </div>`;
     };
 
-    const collapsedActive = !!state.ui?.collapsedActive;
-    const collapsedArchive = !!state.ui?.collapsedArchive;
     const listEl = qs("#list");
     if (!listEl) return;
     listEl.innerHTML = `
-      <details id="activeSection" class="mb-6" ${collapsedActive ? "" : "open"}>
+      <details id="activeSection" class="mb-6" ${state.ui?.collapsedActive ? "" : "open"}>
         <summary class="list-none cursor-pointer select-none rounded-xl px-3 py-2 bg-slate-200/70 hover:bg-slate-300/70 border border-gray-200 flex items-center justify-between shadow-sm">
           <span class="font-medium">Aktuell (${active.length})</span>
-          <span class="text-slate-500 text-sm">${collapsedActive ? "ausklappen" : "einklappen"}</span>
+          <span class="text-slate-500 text-sm">${state.ui?.collapsedActive ? "ausklappen" : "einklappen"}</span>
         </summary>
         <div class="mt-3 space-y-3">
-          ${
-            active.length
-              ? active.map(renderCard).join("")
-              : `<div class="text-slate-600 bg-white/80 p-4 rounded-2xl border border-gray-200">Keine aktiven Termine.</div>`
-          }
+          ${active.length ? active.map(renderCard).join("") : `<div class="text-slate-600 bg-white/80 p-4 rounded-2xl border border-gray-200">Keine aktiven Termine.</div>`}
         </div>
       </details>
       ${
         archived.length
-          ? `<details id="archSection" class="mt-6" ${collapsedArchive ? "" : "open"}>
+          ? `<details id="archSection" class="mt-6" ${state.ui?.collapsedArchive ? "" : "open"}>
               <summary class="list-none cursor-pointer select-none rounded-xl px-3 py-2 bg-slate-200/70 hover:bg-slate-300/70 border border-gray-200 flex items-center justify-between shadow-sm">
                 <span class="font-medium">Archiv (${archived.length})</span>
-                <span class="text-slate-500 text-sm">${collapsedArchive ? "ausklappen" : "einklappen"}</span>
+                <span class="text-slate-500 text-sm">${state.ui?.collapsedArchive ? "ausklappen" : "einklappen"}</span>
               </summary>
               <div class="mt-3 space-y-3">${archived.map(renderCard).join("")}</div>
             </details>`
           : ""
       }`;
-
     bindDynamicListHandlers();
   }
 
   function bindDynamicListHandlers() {
-    qsa("[data-open-booking]").forEach((btn) =>
-      btn.addEventListener("click", () => openBooking(btn.dataset.openBooking))
-    );
+    qsa("[data-open-booking]").forEach((btn) => btn.addEventListener("click", () => openBooking(btn.dataset.openBooking)));
     qsa("[data-edit-slot]").forEach((btn) => btn.addEventListener("click", () => editSlot(btn.dataset.editSlot)));
     qsa("[data-toggle-archive]").forEach((btn) =>
       btn.addEventListener("click", () => toggleArchive(btn.dataset.toggleArchive, btn.dataset.flag === "true"))
@@ -691,23 +661,19 @@
       { skipSnapshot: true, skipSync: true }
     );
   }
-
-  // ----- Slots -----
-  const formSlot = qs("#formSlot");
+  /* ---------- Slots ---------- */
+  const formSlot = qs("form#formSlot");
   const slCat = qs("#sl_category");
   const rowTitleOther = qs("#row_title_other");
   const slTitleOther = qs("#sl_title_other");
-
   slCat?.addEventListener("change", () => {
     rowTitleOther.style.display = slCat.value === "Sonstiges" ? "block" : "none";
   });
-
   qs("#btnManageSlots")?.addEventListener("click", () => openSlotCreate());
   qs("#m_btnManageSlots")?.addEventListener("click", () => {
     closeMobileMenu();
     openSlotCreate();
   });
-
   function openSlotCreate() {
     const now = new Date();
     now.setMinutes(0, 0, 0);
@@ -723,7 +689,6 @@
     openModal(modalSlots);
     setFocus(qs("#sl_capacity"));
   }
-
   function bindCreateSlotHandler() {
     formSlot.onsubmit = async (ev) => {
       ev.preventDefault();
@@ -752,7 +717,6 @@
       }
     };
   }
-
   async function editSlot(id) {
     const state = await storage.getState();
     const s = (state.slots || []).find((x) => x.id === id);
@@ -790,7 +754,6 @@
     openModal(modalSlots);
     setFocus(qs("#sl_capacity"));
   }
-
   async function toggleArchive(id, flag) {
     try {
       await updateState((draft) => {
@@ -808,7 +771,6 @@
     modalConfirmDelete.classList.remove("hidden");
     modalConfirmDelete.classList.add("flex");
   }
-
   qs("#btnCancelDelete")?.addEventListener("click", () => closeConfirmDelete());
   qs("#btnConfirmDelete")?.addEventListener("click", async () => {
     if (!pendingDeleteSlotId) return closeConfirmDelete();
@@ -824,19 +786,17 @@
     }
     closeConfirmDelete();
   });
-
   function closeConfirmDelete() {
     modalConfirmDelete.classList.add("hidden");
     modalConfirmDelete.classList.remove("flex");
     pendingDeleteSlotId = null;
   }
 
-  // ----- Bookings -----
+  /* ---------- Bookings ---------- */
   const formBooking = qs("#formBooking");
   const btnDeleteBooking = qs("#btnDeleteBooking");
   const btnWhatsappShare = qs("#btnWhatsappShare");
   const selChannel = qs("#bk_channel");
-
   window.openBooking = (slotId) => openBooking(slotId);
   function openBooking(slotId) {
     ctx.currentSlotId = slotId;
@@ -885,11 +845,9 @@
     openModal(modalBooking);
     setFocus(qs("#bk_name"));
   }
-
   function toggleDeleteButton(on) {
     if (btnDeleteBooking) btnDeleteBooking.classList.toggle("hidden", !on);
   }
-
   function openWhatsappConfirmation(b) {
     storage.getState().then((state) => {
       const slot = (state.slots || []).find((s) => s.id === b.slotId);
@@ -940,11 +898,9 @@ Stefanie`;
       return;
     }
     const normNew = normalizePhoneDE(booking.phone);
-    const dup = state.bookings.find(
-      (x) => x.slotId === slot.id && (!editing || x.id !== old.id) && normalizePhoneDE(x.phone) === normNew
-    );
+    const dup = state.bookings.find((x) => x.slotId === slot.id && (!editing || x.id !== old.id) && normalizePhoneDE(x.phone) === normNew);
     if (dup) {
-      const proceed = confirm("Achtung: Diese Telefonnummer ist fuer diesen Termin bereits erfasst. Trotzdem speichern?");
+      const proceed = confirm("Telefonnummer bereits erfasst. Trotzdem speichern?");
       if (!proceed) return;
     }
     const already = sumBooked(slot.id, state);
@@ -973,8 +929,7 @@ Stefanie`;
       showToast("Speichern fehlgeschlagen: " + err.message, "error");
     }
   });
-
-  // ----- Export / Backup -----
+  /* ---------- Backup / Export ---------- */
   qs("#btnExportCsv")?.addEventListener("click", exportCsv);
   qs("#btnBackup")?.addEventListener("click", handleExportBackup);
   qs("#m_btnBackup")?.addEventListener("click", () => {
@@ -1101,12 +1056,12 @@ Stefanie`;
     const el = qs("#serverBackups");
     if (!el) return;
     if (!authUser || !supabaseClient) {
-      el.innerHTML = `<li class="text-sm text-slate-500">Login noetig</li>`;
+      el.innerHTML = `<li class="text-sm text-slate-500">Nicht angemeldet</li>`;
       return;
     }
     const list = await fetchServerBackups();
     if (!list.length) {
-      el.innerHTML = `<li class="text-sm text-slate-500">Noch keine Server-Backups</li>`;
+      el.innerHTML = `<li class="text-sm text-slate-500">Noch keine Cloud-Sicherungen</li>`;
       return;
     }
     el.innerHTML = list
@@ -1121,19 +1076,18 @@ Stefanie`;
       btn.addEventListener("click", async () => {
         try {
           await restoreServerBackup(btn.dataset.restoreServer);
-          showToast("Server-Backup importiert", "success");
+          showToast("Cloud-Backup importiert", "success");
         } catch (err) {
-          showToast("Server-Backup fehlgeschlagen: " + err.message, "error");
+          showToast("Cloud-Backup fehlgeschlagen: " + err.message, "error");
         }
       })
     );
   }
-
-  // ----- Search / filter -----
+  /* ---------- Search / Filter ---------- */
   qs("#search")?.addEventListener("input", async () => render(await storage.getState()));
   qs("#filterStatus")?.addEventListener("change", async () => render(await storage.getState()));
 
-  // ----- Mobile menu -----
+  /* ---------- Mobile Menu ---------- */
   const mobileMenu = qs("#mobileMenu");
   const mobilePanel = qs("#mobilePanel");
   const btnMenu = qs("#btnMenu");
@@ -1165,7 +1119,7 @@ Stefanie`;
     qs("#btnArchiveView")?.click();
   });
 
-  // ----- Archive jump -----
+  /* ---------- Archive Jump ---------- */
   qs("#btnArchiveView")?.addEventListener("click", () => {
     const el = document.getElementById("archSection");
     if (!el) {
@@ -1176,7 +1130,7 @@ Stefanie`;
     el.scrollIntoView({ behavior: "smooth", block: "start" });
   });
 
-  // ----- Toast backup reminder -----
+  /* ---------- Backup Reminder ---------- */
   function maybeShowBackupReminder() {
     storage.getState().then((state) => {
       if (state.ui.lastBackupDay === todayKey()) return;
@@ -1190,16 +1144,13 @@ Stefanie`;
     });
   }
 
-  // ----- Service worker update -----
+  /* ---------- Service Worker Update ---------- */
   const updateBanner = qs("#updateBanner");
   const updateReloadBtn = qs("#btnReloadUpdate");
-
   function setupServiceWorkerUpdate() {
     if (!("serviceWorker" in navigator)) return;
     navigator.serviceWorker.addEventListener("controllerchange", () => {
-      if (updateWaitingWorker && !updateWaitingWorker.skipWaiting) {
-        location.reload();
-      }
+      if (updateWaitingWorker && !updateWaitingWorker.skipWaiting) location.reload();
     });
     navigator.serviceWorker.ready.then((reg) => {
       reg.addEventListener("updatefound", () => {
@@ -1214,19 +1165,17 @@ Stefanie`;
       });
     });
   }
-
   function showUpdateBanner() {
     if (!updateBanner) return;
     updateBanner.classList.remove("hidden");
   }
-
   updateReloadBtn?.addEventListener("click", () => {
     if (updateWaitingWorker) updateWaitingWorker.postMessage({ type: "SKIP_WAITING" });
     showToast("Update geladen, Seite wird neu geladen", "success");
     setTimeout(() => location.reload(), 400);
   });
 
-  // ----- Debug -----
+  /* ---------- Debug ---------- */
   async function renderDebug() {
     if (!isDebug) return;
     const panel = qs("#debugPanel");
@@ -1242,18 +1191,19 @@ Stefanie`;
       `IDB Version: ${state.meta.idbVersion}`,
       `Online: ${navigator.onLine}`,
       `User: ${state.user?.email || "-"}`,
+      `Org: ${state.activeOrgId}`,
     ];
     panel.textContent = lines.join(" | ");
   }
 
-  // ----- Status / auth UI -----
+  /* ---------- Status / Auth UI ---------- */
   const authForm = qs("#authForm");
   const authStatus = qs("#authStatus");
+  const cloudStatus = qs("#cloudStatus");
   const inputEmail = qs("#authEmail");
   const btnLogout = qs("#btnLogout");
-  const orgSelect = qs("#orgSelect");
+  const teamSelect = qs("#teamSelect");
   const syncMeta = qs("#syncMeta");
-  const serverBackupToggle = qs("#toggleServerBackups");
 
   function renderStatus() {
     const online = navigator.onLine;
@@ -1268,20 +1218,25 @@ Stefanie`;
 
   async function renderAuth() {
     const state = await storage.getState();
-    if (authStatus) {
-      authStatus.textContent = state.user?.email ? `Eingeloggt als ${state.user.email}` : "Nicht eingeloggt";
-    }
+    if (authStatus) authStatus.textContent = state.user?.email ? `Angemeldet als ${state.user.email}` : "Nicht angemeldet";
+    if (cloudStatus) cloudStatus.textContent = state.user?.email ? "Cloud-Sicherung: aktiv" : "Cloud-Sicherung: nicht angemeldet";
     if (btnLogout) btnLogout.classList.toggle("hidden", !state.user);
-    if (serverBackupToggle) {
-      serverBackupToggle.checked = !!state.serverBackupsEnabled;
-      serverBackupToggle.disabled = !state.user;
+    if (authForm) authForm.classList.toggle("hidden", !!state.user);
+    if (teamSelect) {
+      const orgs = state.orgs || [];
+      if (!orgs.length) {
+        teamSelect.innerHTML = `<option value="local">Lokales Konto</option>`;
+        teamSelect.parentElement?.classList.add("hidden");
+      } else {
+        teamSelect.parentElement?.classList.toggle("hidden", orgs.length <= 1);
+        teamSelect.innerHTML = orgs.map((o) => `<option value="${o.id}">${o.name}</option>`).join("");
+        teamSelect.value = state.activeOrgId;
+      }
     }
-    if (orgSelect) {
-      const opts = [state.activeOrgId || "default"];
-      orgSelect.innerHTML = opts.map((o) => `<option value="${o}">${o}</option>`).join("");
-      orgSelect.value = state.activeOrgId || "default";
+    if (syncMeta) {
+      const offline = navigator.onLine ? "" : " (offline - wird synchronisiert)";
+      syncMeta.textContent = `Zuletzt synchronisiert: ${state.meta.lastSyncAt || "noch nie"}${offline}`;
     }
-    if (syncMeta) syncMeta.textContent = `Zuletzt synchronisiert: ${state.meta.lastSyncAt || "noch nie"}`;
   }
 
   authForm?.addEventListener("submit", async (e) => {
@@ -1302,40 +1257,33 @@ Stefanie`;
     if (!supabaseClient) return;
     await supabaseClient.auth.signOut();
     await updateUserInState(null);
+    await updateState(
+      (draft) => {
+        draft.orgs = [];
+        draft.activeOrgId = "local";
+      },
+      { skipSync: true, skipSnapshot: true }
+    );
     showToast("Abgemeldet", "info");
+    renderAuth();
   });
 
-  orgSelect?.addEventListener("change", async (e) => {
-    const val = e.target.value || "default";
-    await updateState((draft) => {
-      draft.activeOrgId = val;
-    });
+  teamSelect?.addEventListener("change", async (e) => {
+    const val = e.target.value || "local";
+    await updateState(
+      (draft) => {
+        draft.activeOrgId = val;
+      },
+      { skipSnapshot: true }
+    );
     await pullLatestFromServer();
     renderAll();
   });
 
-  serverBackupToggle?.addEventListener("change", async (e) => {
-    await updateState(
-      (draft) => {
-        draft.serverBackupsEnabled = e.target.checked;
-      },
-      { skipSnapshot: true, skipSync: true }
-    );
-  });
-
-  // ----- ICS -----
+  /* ---------- ICS ---------- */
   function toICSDateUTC(isoStr) {
     const d = new Date(isoStr);
-    return (
-      d.getUTCFullYear() +
-      pad2(d.getUTCMonth() + 1) +
-      pad2(d.getUTCDate()) +
-      "T" +
-      pad2(d.getUTCHours()) +
-      pad2(d.getUTCMinutes()) +
-      pad2(d.getUTCSeconds()) +
-      "Z"
-    );
+    return d.getUTCFullYear() + pad2(d.getUTCMonth() + 1) + pad2(d.getUTCDate()) + "T" + pad2(d.getUTCHours()) + pad2(d.getUTCMinutes()) + pad2(d.getUTCSeconds()) + "Z";
   }
   function downloadICS(slotId) {
     storage.getState().then((state) => {
@@ -1370,7 +1318,7 @@ END:VCALENDAR`;
     });
   }
 
-  // ----- Update state helper -----
+  /* ---------- Update State Helper ---------- */
   async function updateState(mutator, options = {}) {
     const state = await storage.getState();
     const next = clone(state);
@@ -1386,44 +1334,20 @@ END:VCALENDAR`;
     return saved;
   }
 
-  // ----- Init -----
+  /* ---------- Init ---------- */
   async function init() {
-  await storage.getState();
-
-  if (supabaseClient) {
-    await handleAuthCallback();
-    await loadSession();
-    subscribeAuth();
-    await pullLatestFromServer();
+    await storage.getState();
+    if (supabaseClient) {
+      await handleAuthCallback();
+      await loadSession();
+      subscribeAuth();
+      await pullLatestFromServer();
+    }
+    maybeShowBackupReminder();
+    renderAll();
+    setupServiceWorkerUpdate();
+    renderStatus();
   }
-
-  maybeShowBackupReminder();
-  renderAll();
-  setupServiceWorkerUpdate();
-  renderStatus();
-}
-
-
-  async function handleAuthCallback() {
-  if (!supabaseClient) return;
-
-  const url = new URL(window.location.href);
-  const code = url.searchParams.get("code");
-
-  // PKCE-Flow
-  if (code) {
-    const { error } = await supabaseClient.auth.exchangeCodeForSession(code);
-    if (error) console.warn("Auth exchange failed:", error);
-
-    // URL aufräumen
-    url.searchParams.delete("code");
-    window.history.replaceState({}, document.title, url.toString());
-  } else {
-    // Fallback: implicit flow (#access_token)
-    await supabaseClient.auth.getSession();
-  }
-}
-
 
   document.addEventListener("DOMContentLoaded", init);
 })();
