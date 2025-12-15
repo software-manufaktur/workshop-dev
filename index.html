@@ -4,7 +4,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>SeeYou Schmuck Workshops</title>
+  <title>Termin Manager</title>
   <link rel="icon" href="static/logo.png">
   <script src="https://cdn.tailwindcss.com"></script>
   <script>
@@ -18,7 +18,7 @@
   <!-- iOS PWA -->
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
-  <meta name="apple-mobile-web-app-title" content="SeeYou Workshops">
+  <meta name="apple-mobile-web-app-title" content="Termin Manager">
   <link rel="apple-touch-icon" href="static/icons/logo.png">
 
   <style>
@@ -60,8 +60,8 @@
     <div class="grid grid-cols-3 items-center">
       <div></div>
       <div class="justify-self-center flex items-center gap-3">
-        <img src="static/logo.png" alt="SeeYou" class="h-10 w-auto relative z-10">
-        <h1 class="text-xl font-semibold" style="color:#AF9778">SeeYou</h1>
+        <img id="brandLogo" src="static/logo.png" alt="Logo" class="h-10 w-auto relative z-10">
+        <h1 id="brandTitle" class="text-xl font-semibold" style="color:#AF9778">Termin Manager</h1>
       </div>
       <div class="flex items-center gap-2 justify-self-end">
         <button id="btnMenu" class="sm:hidden p-2 rounded-xl bg-graysoft hover:bg-graymid" aria-label="Menue">Menu</button>
@@ -218,7 +218,7 @@
         <label class="flex flex-col gap-1 md:col-span-2">
           <span class="text-sm">Kategorie</span>
           <select id="sl_category" class="px-3 py-2 rounded-xl border border-graymid/60">
-            <option>Schmuck-Workshop</option>
+            <option>Workshop</option>
             <option>Kindergeburtstag</option>
             <option>JGA</option>
             <option>Maedelsabend</option>
@@ -289,8 +289,11 @@
 
   <script>
     window.APP_CONFIG = {
-      SUPABASE_URL: "https://mpgmsxkibyytdfaswpoa.supabase.co",
-      SUPABASE_ANON_KEY: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1wZ21zeGtpYnl5dGRmYXN3cG9hIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjU4MDc4MDUsImV4cCI6MjA4MTM4MzgwNX0.isQbD5QbXBAUGxJzz6Sb2VCZCVbjs5t8bOii0QTQZNE"
+      SUPABASE_URL: "https://YOUR-PROJECT.supabase.co",
+      SUPABASE_ANON_KEY: "SUPABASE_ANON_KEY",
+      BRAND_NAME: "Termin Manager",
+      BRAND_COLOR: "#AF9778",
+      BRAND_LOGO: "static/logo.png"
     };
   </script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.3/dist/umd/supabase.js" crossorigin="anonymous"></script>

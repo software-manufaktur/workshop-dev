@@ -1,7 +1,7 @@
 {
-  "name": "SeeYou Workshops",
-  "short_name": "SeeYou",
-  "description": "Terminverwaltung fuer Schmuck-Workshops",
+  "name": "Termin Manager",
+  "short_name": "Termine",
+  "description": "Termin- und Buchungsverwaltung offline-first",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",

@@ -1,10 +1,10 @@
-# Workshop App (SeeYou)
+# Termin Manager (PWA)
 
-Offline-first PWA fuer Termin- und Buchungsverwaltung mit Homescreen-Support, Supabase-Sync und Backups. Funktioniert ohne Build-Tool auf GitHub Pages (reine HTML/JS/CSS).
+Offline-first PWA fuer Termin- und Buchungsverwaltung mit Homescreen-Support, Supabase-Sicherung und Backups. Funktioniert ohne Build-Tool auf GitHub Pages (reine HTML/JS/CSS).
 
 ## Setup GitHub Pages
 - Lege `index.html`, `app.js`, `service-worker.js`, `manifest.webmanifest`, `supabase.sql` und den Ordner `static/` in dein Pages-Repository.
-- In `index.html` unter `window.APP_CONFIG` deine Werte fuer `SUPABASE_URL` und `SUPABASE_ANON_KEY` eintragen (Anon-Key ist ok, keine Secrets).
+- In `index.html` unter `window.APP_CONFIG` deine Werte fuer `SUPABASE_URL` und `SUPABASE_ANON_KEY` eintragen (Anon-Key ist ok, keine Secrets). Optional Branding: `BRAND_NAME`, `BRAND_COLOR`, `BRAND_LOGO`.
 - Service Worker ist aktiv, versionierte Caches, Update-Banner mit Button `Neu laden`.
 - Start-URL `./`, damit auch Unterpfade auf Pages funktionieren.
 

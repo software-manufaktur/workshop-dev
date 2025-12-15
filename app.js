@@ -1,4 +1,4 @@
-/* Workshop App - Offline-first PWA with Supabase Sync and Backups */
+/* Termin Manager - Offline-first PWA mit Cloud-Sicherung */
 (function () {
   "use strict";
 
@@ -36,6 +36,9 @@
         },
       })
     : null;
+  const brandName = supabaseConfig.BRAND_NAME || "Termin Manager";
+  const brandColor = supabaseConfig.BRAND_COLOR || "#AF9778";
+  const brandLogo = supabaseConfig.BRAND_LOGO || "static/logo.png";
 
   const stateDefaults = {
     slots: [],
@@ -72,6 +75,19 @@
     return id;
   };
   const isCloudReady = (state) => Boolean(supabaseClient && authUser && isUuid(state?.activeOrgId));
+
+  function applyBranding() {
+    document.title = brandName;
+    const titleEl = qs("#brandTitle");
+    const logoEl = qs("#brandLogo");
+    if (titleEl) {
+      titleEl.textContent = brandName;
+      titleEl.style.color = brandColor;
+    }
+    if (logoEl && brandLogo) logoEl.src = brandLogo;
+    const metaTheme = document.querySelector("meta[name='theme-color']");
+    if (metaTheme) metaTheme.setAttribute("content", brandColor);
+  }
 
   /* ---------- IndexedDB Layer ---------- */
   function openDb() {
@@ -139,8 +155,8 @@
     s2.setHours(10, 0, 0, 0);
     const e2 = new Date(s2.getTime() + 2 * 3600 * 1000);
     return [
-      { id: uid(), title: "Schmuck-Workshop", starts_at: s1.toISOString(), ends_at: e1.toISOString(), capacity: 10, archived: false },
-      { id: uid(), title: "Schmuck-Workshop", starts_at: s2.toISOString(), ends_at: e2.toISOString(), capacity: 8, archived: false },
+      { id: uid(), title: "Workshop Termin", starts_at: s1.toISOString(), ends_at: e1.toISOString(), capacity: 10, archived: false },
+      { id: uid(), title: "Workshop Termin", starts_at: s2.toISOString(), ends_at: e2.toISOString(), capacity: 8, archived: false },
     ];
   }
   async function getState() {
@@ -434,13 +450,13 @@
       if (!isCloudReady(state)) return;
       await pushStateToServer(queued.state);
       await storage.queueClear();
-      showToast("Sync erfolgreich", "success");
+      showToast("Cloud gesichert", "success");
     } catch (err) {
       const state = await storage.getState();
       state.meta.lastSyncError = err.message;
       await storage.saveState(state, { skipSnapshot: true });
       memoryState = state;
-      showToast("Sync fehlgeschlagen: " + err.message, "error");
+      showToast("Cloud-Sicherung fehlgeschlagen: " + err.message, "error");
     } finally {
       flushInFlight = false;
       renderDebug();
@@ -506,7 +522,7 @@
   });
 
   /* ---------- Domain helpers ---------- */
-  const CATS = ["Schmuck-Workshop", "Kindergeburtstag", "JGA", "Maedelsabend", "Weihnachtsfeier", "Sonstiges"];
+  const CATS = ["Workshop", "Kurs", "Event", "Seminar", "Private Gruppe", "Sonstiges"];
   const CHANNELS = ["", "Instagram", "WhatsApp", "E-Mail", "Triviar", "Telefonisch", "Persoenlich"];
   const uid = () => Math.random().toString(36).slice(2) + Date.now().toString(36);
   const normalizePhoneDE = (raw) => {
@@ -694,7 +710,7 @@
     now.setMinutes(0, 0, 0);
     const s = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 17);
     const e = new Date(s.getTime() + 2 * 3600 * 1000);
-    slCat.value = "Schmuck-Workshop";
+    if (slCat) slCat.value = "Workshop";
     if (rowTitleOther) rowTitleOther.style.display = "none";
     if (slTitleOther) slTitleOther.value = "";
     const cap = qs("#sl_capacity");
@@ -711,7 +727,7 @@
     if (!formSlot) return;
     formSlot.onsubmit = async (ev) => {
       ev.preventDefault();
-      const title = slCat && slCat.value === "Sonstiges" ? (slTitleOther?.value || "").trim() || "Schmuck-Workshop" : slCat?.value;
+      const title = slCat && slCat.value === "Sonstiges" ? (slTitleOther?.value || "").trim() || "Workshop" : slCat?.value;
       const capEl = qs("#sl_capacity");
       const stEl = qs("#sl_starts");
       const enEl = qs("#sl_ends");
@@ -975,7 +991,7 @@ Stefanie`;
         }
         draft.meta.lastSaveAt = new Date().toISOString();
       });
-      const hint = `Workshop ${fmtDate(slot.starts_at)} - ${booking.count} Pers.\n${booking.name} ${booking.phone}\n${booking.notes || ""}`;
+    const hint = `Termin ${fmtDate(slot.starts_at)} - ${booking.count} Pers.\n${booking.name} ${booking.phone}\n${booking.notes || ""}`;
       navigator.clipboard?.writeText(hint).catch(() => {});
       ctx.currentBookingId = null;
       closeModal(modalBooking);
@@ -1015,7 +1031,7 @@ Stefanie`;
     const blob = new Blob([csv], { type: "text/csv" });
     const a = document.createElement("a");
     a.href = URL.createObjectURL(blob);
-    a.download = "workshops.csv";
+    a.download = "termine.csv";
     a.click();
     URL.revokeObjectURL(a.href);
   }
@@ -1025,7 +1041,7 @@ Stefanie`;
     const blob = new Blob([JSON.stringify(backup, null, 2)], { type: "application/json" });
     const a = document.createElement("a");
     const d = new Date();
-    const name = `seeyou_backup_${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}.json`;
+    const name = `termin_backup_${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}.json`;
     a.href = URL.createObjectURL(blob);
     a.download = name;
     a.click();
@@ -1294,7 +1310,7 @@ Stefanie`;
     }
     if (syncMeta) {
       const offline = navigator.onLine ? "" : " (offline - wird synchronisiert)";
-      syncMeta.textContent = `Zuletzt synchronisiert: ${state.meta.lastSyncAt || "noch nie"}${offline}`;
+      syncMeta.textContent = `Zuletzt aktualisiert: ${state.meta.lastSyncAt || "noch nie"}${offline}`;
     }
   }
 
@@ -1361,12 +1377,12 @@ Stefanie`;
       if (!slot) return;
       const dtStart = toICSDateUTC(slot.starts_at);
       const dtEnd = toICSDateUTC(slot.ends_at);
-      const uidVal = `${slot.id}@seeyou.workshops`;
+      const uidVal = `${slot.id}@terminmanager.app`;
       const summary = (slot.title || "").replace(/\n/g, " ");
-      const description = `SeeYou Workshop\nKapazitaet: ${slot.capacity}`;
+      const description = `${brandName}\nKapazitaet: ${slot.capacity}`;
       const ics = `BEGIN:VCALENDAR
 VERSION:2.0
-PRODID:-//SeeYou Workshops//DE
+PRODID:-//Termin Manager//DE
 CALSCALE:GREGORIAN
 BEGIN:VEVENT
 UID:${uidVal}
@@ -1380,7 +1396,7 @@ END:VCALENDAR`;
       const blob = new Blob([ics], { type: "text/calendar;charset=utf-8" });
       const a = document.createElement("a");
       const d = new Date(slot.starts_at);
-      const name = `seeyou_${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}_${summary.replace(/\s+/g, "_")}.ics`;
+      const name = `termin_${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}_${summary.replace(/\s+/g, "_")}.ics`;
       a.href = URL.createObjectURL(blob);
       a.download = name;
       a.click();
@@ -1406,6 +1422,7 @@ END:VCALENDAR`;
 
   /* ---------- Init ---------- */
   async function init() {
+    applyBranding();
     await storage.getState();
     if (supabaseClient) {
       await handleAuthCallback();
