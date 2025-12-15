@@ -51,7 +51,7 @@
       lastSyncError: null,
       idbVersion: DB_VERSION,
     },
-    activeOrgId: "local",
+    activeOrgId: null,
     orgs: [],
     user: null,
   };
@@ -64,6 +64,14 @@
   let updateWaitingWorker = null;
   let authUser = null;
   const ctx = { currentSlotId: null, currentBookingId: null, importPreview: null };
+
+  const isUuid = (val) => typeof val === "string" && /^[0-9a-fA-F-]{36}$/.test(val);
+  const normalizeActiveOrgId = (id, orgs = []) => {
+    if (!isUuid(id)) return null;
+    if (orgs.length && !orgs.find((o) => o.id === id)) return orgs[0]?.id || null;
+    return id;
+  };
+  const isCloudReady = (state) => Boolean(supabaseClient && authUser && isUuid(state?.activeOrgId));
 
   /* ---------- IndexedDB Layer ---------- */
   function openDb() {
@@ -116,7 +124,7 @@
       console.warn("Migration failed", err);
       return null;
     }
-    const migrated = { ...clone(stateDefaults), slots, bookings };
+    const migrated = { ...clone(stateDefaults), slots, bookings, activeOrgId: null };
     await writeStateToDb(migrated);
     memoryState = migrated;
     return migrated;
@@ -140,6 +148,7 @@
     const fromDb = await readStateFromDb();
     if (fromDb) {
       const normalized = { ...clone(stateDefaults), ...fromDb, meta: { ...stateDefaults.meta, ...(fromDb.meta || {}) } };
+      normalized.activeOrgId = normalizeActiveOrgId(normalized.activeOrgId, normalized.orgs);
       memoryState = normalized;
       if (!deepEqual(fromDb, normalized)) await saveState(normalized, { skipSnapshot: true });
       return clone(normalized);
@@ -162,6 +171,7 @@
 
   async function saveState(state, { skipSnapshot = false } = {}) {
     const safe = clone(state);
+    safe.activeOrgId = normalizeActiveOrgId(safe.activeOrgId, safe.orgs);
     await writeStateToDb(safe);
     const readback = await readStateFromDb();
     if (!deepEqual(safe, readback)) throw new Error("Read-after-write verification failed");
@@ -214,7 +224,7 @@
   }
 
   async function queueSet(state) {
-    const payload = { created_at: new Date().toISOString(), state: clone(state), org_id: state.activeOrgId };
+    const payload = { created_at: new Date().toISOString(), state: clone(state), org_id: state.activeOrgId || null };
     await withStore("queue", "readwrite", (store) => {
       const clearReq = store.clear();
       clearReq.onsuccess = () => store.add(payload);
@@ -304,8 +314,13 @@
     await updateState(
       (draft) => {
         draft.orgs = orgs;
-        if (!orgs.length) draft.activeOrgId = "local";
-        else if (!orgs.find((o) => o.id === draft.activeOrgId)) draft.activeOrgId = orgs[0].id;
+        if (!orgs.length) {
+          draft.activeOrgId = null;
+        } else if (!orgs.find((o) => o.id === draft.activeOrgId)) {
+          draft.activeOrgId = orgs[0].id;
+        } else {
+          draft.activeOrgId = normalizeActiveOrgId(draft.activeOrgId, orgs);
+        }
       },
       { skipSync: true, skipSnapshot: true }
     );
@@ -314,15 +329,15 @@
   async function updateUserInState(user) {
     const current = await storage.getState();
     current.user = user ? { id: user.id, email: user.email } : null;
+    current.activeOrgId = normalizeActiveOrgId(current.activeOrgId, current.orgs);
     await storage.saveState(current, { skipSnapshot: true });
     memoryState = current;
     renderDebug();
   }
 
   async function pullLatestFromServer() {
-    if (!supabaseClient || !authUser) return;
     const state = await storage.getState();
-    if (!state.activeOrgId || state.activeOrgId === "local") return;
+    if (!isCloudReady(state)) return;
     const { data, error } = await supabaseClient
       .from("workshop_states")
       .select("*")
@@ -350,8 +365,7 @@
   }
 
   async function pushStateToServer(state) {
-    if (!supabaseClient || !authUser) return;
-    if (!state.activeOrgId || state.activeOrgId === "local") return;
+    if (!isCloudReady(state)) return;
     const payload = {
       org_id: state.activeOrgId,
       data: { ...state, meta: { ...state.meta, lastSyncAt: null } },
@@ -369,17 +383,15 @@
   }
 
   async function pushServerBackup(state) {
-    if (!supabaseClient || !authUser) return;
-    if (!state.activeOrgId || state.activeOrgId === "local") return;
+    if (!isCloudReady(state)) return;
     const snapshot = { org_id: state.activeOrgId, snapshot: clone(state), created_at: new Date().toISOString(), created_by: authUser.id };
     const { error } = await supabaseClient.from("backups").insert(snapshot);
     if (error) console.warn("Server backup failed", error);
   }
 
   async function fetchServerBackups() {
-    if (!supabaseClient || !authUser) return [];
     const state = await storage.getState();
-    if (!state.activeOrgId || state.activeOrgId === "local") return [];
+    if (!isCloudReady(state)) return [];
     const { data, error } = await supabaseClient
       .from("backups")
       .select("*")
@@ -394,7 +406,8 @@
   }
 
   async function restoreServerBackup(id) {
-    if (!supabaseClient || !authUser) throw new Error("Nicht eingeloggt");
+    const state = await storage.getState();
+    if (!isCloudReady(state)) throw new Error("Nicht eingeloggt");
     const { data, error } = await supabaseClient.from("backups").select("*").eq("id", id).maybeSingle();
     if (error) throw error;
     if (!data) throw new Error("Backup nicht gefunden");
@@ -416,8 +429,9 @@
     try {
       const queued = await storage.queueGetLatest();
       if (!queued) return;
+      const state = await storage.getState();
       if (!navigator.onLine) return;
-      if (!authUser || !supabaseClient) return;
+      if (!isCloudReady(state)) return;
       await pushStateToServer(queued.state);
       await storage.queueClear();
       showToast("Sync erfolgreich", "success");
@@ -1260,18 +1274,22 @@ Stefanie`;
   async function renderAuth() {
     const state = await storage.getState();
     if (authStatus) authStatus.textContent = state.user?.email ? `Angemeldet als ${state.user.email}` : "Nicht angemeldet";
-    if (cloudStatus) cloudStatus.textContent = state.user?.email ? "Cloud-Sicherung: aktiv" : "Cloud-Sicherung: nicht angemeldet";
+    if (cloudStatus) cloudStatus.textContent = isCloudReady(state) ? "Cloud-Sicherung: aktiv" : "Cloud-Sicherung: nicht angemeldet";
     if (btnLogout) btnLogout.classList.toggle("hidden", !state.user);
     if (authForm) authForm.classList.toggle("hidden", !!state.user);
     if (teamSelect) {
       const orgs = state.orgs || [];
-      if (!orgs.length) {
-        teamSelect.innerHTML = `<option value="local">Lokales Konto</option>`;
+      if (orgs.length <= 1) {
         teamSelect.parentElement?.classList.add("hidden");
+        if (orgs.length === 1 && orgs[0].id) {
+          teamSelect.innerHTML = `<option value="${orgs[0].id}">${orgs[0].name}</option>`;
+        } else {
+          teamSelect.innerHTML = `<option value="">Lokaler Modus</option>`;
+        }
       } else {
-        teamSelect.parentElement?.classList.toggle("hidden", orgs.length <= 1);
+        teamSelect.parentElement?.classList.remove("hidden");
         teamSelect.innerHTML = orgs.map((o) => `<option value="${o.id}">${o.name}</option>`).join("");
-        teamSelect.value = state.activeOrgId;
+        teamSelect.value = state.activeOrgId || orgs[0].id;
       }
     }
     if (syncMeta) {
@@ -1295,22 +1313,33 @@ Stefanie`;
   });
 
   btnLogout?.addEventListener("click", async () => {
-    if (!supabaseClient) return;
-    await supabaseClient.auth.signOut();
-    await updateUserInState(null);
-    await updateState(
-      (draft) => {
-        draft.orgs = [];
-        draft.activeOrgId = "local";
-      },
-      { skipSync: true, skipSnapshot: true }
-    );
-    showToast("Abgemeldet", "info");
+    try {
+      await supabaseClient?.auth.signOut();
+    } catch (err) {
+      console.warn("Logout warning", err);
+    }
+    authUser = null;
+    const state = await storage.getState();
+    state.user = null;
+    state.orgs = [];
+    state.activeOrgId = null;
+    state.meta.lastSyncAt = null;
+    state.meta.lastSyncError = null;
+    try {
+      await storage.saveState(state, { skipSnapshot: true });
+      await storage.queueClear();
+    } catch (err) {
+      console.warn("Local logout cleanup failed", err);
+    }
+    memoryState = state;
+    renderAll();
     renderAuth();
+    renderStatus();
+    showToast("Abgemeldet", "info");
   });
 
   teamSelect?.addEventListener("change", async (e) => {
-    const val = e.target.value || "local";
+    const val = e.target.value || null;
     await updateState(
       (draft) => {
         draft.activeOrgId = val;
