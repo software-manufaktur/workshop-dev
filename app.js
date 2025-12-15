@@ -64,6 +64,7 @@
   let pendingDeleteSlotId = null;
   let syncTimer = null;
   let flushInFlight = false;
+  let syncRetry = 0;
   let updateWaitingWorker = null;
   let authUser = null;
   const ctx = { currentSlotId: null, currentBookingId: null, importPreview: null };
@@ -377,6 +378,8 @@
       memoryState = merged;
       renderAll();
       showToast("Cloud-Daten wurden geladen", "info");
+    } else if (remoteUpdated < localUpdated) {
+      console.warn("Remote Daten aelter als lokal, behalte lokal", { remoteUpdated, localUpdated });
     }
   }
 
@@ -434,9 +437,9 @@
     scheduleSync();
   }
 
-  async function scheduleSync() {
+  async function scheduleSync(delayMs) {
     if (syncTimer) clearTimeout(syncTimer);
-    syncTimer = setTimeout(flushQueue, SYNC_DEBOUNCE_MS);
+    syncTimer = setTimeout(flushQueue, delayMs || SYNC_DEBOUNCE_MS);
   }
 
   async function flushQueue() {
@@ -450,13 +453,17 @@
       if (!isCloudReady(state)) return;
       await pushStateToServer(queued.state);
       await storage.queueClear();
+      syncRetry = 0;
       showToast("Cloud gesichert", "success");
     } catch (err) {
       const state = await storage.getState();
       state.meta.lastSyncError = err.message;
       await storage.saveState(state, { skipSnapshot: true });
       memoryState = state;
+      syncRetry += 1;
+      const nextDelay = Math.min(30000, Math.pow(2, syncRetry) * 1000);
       showToast("Cloud-Sicherung fehlgeschlagen: " + err.message, "error");
+      scheduleSync(nextDelay);
     } finally {
       flushInFlight = false;
       renderDebug();
@@ -1107,7 +1114,7 @@ Stefanie`;
     el.innerHTML = list
       .map(
         (b) => `<li class="flex items-center justify-between text-sm border-b border-gray-100 py-1">
-          <span>${fmtDate(b.created_at)} - ${b.reason}</span>
+          <span>${fmtDate(b.created_at)} · ${b.reason} · ${b.state?.slots?.length || 0} Termine / ${b.state?.bookings?.length || 0} Buchungen</span>
           <button class="text-xs px-2 py-1 bg-gray-100 rounded" data-restore-local="${b.id}">Wiederherstellen</button>
         </li>`
       )
@@ -1138,7 +1145,7 @@ Stefanie`;
     el.innerHTML = list
       .map(
         (b) => `<li class="flex items-center justify-between text-sm border-b border-gray-100 py-1">
-          <span>${fmtDate(b.created_at || b.inserted_at)}</span>
+          <span>${fmtDate(b.created_at || b.inserted_at)} · ${b.snapshot?.slots?.length || 0} Termine / ${b.snapshot?.bookings?.length || 0} Buchungen</span>
           <button class="text-xs px-2 py-1 bg-gray-100 rounded" data-restore-server="${b.id}">Wiederherstellen</button>
         </li>`
       )

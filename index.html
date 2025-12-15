@@ -9,7 +9,16 @@
   <script src="https://cdn.tailwindcss.com"></script>
   <script>
     tailwind.config = {
-      theme: { extend: { colors: { brand: '#AF9778', graysoft: '#E6E6E6', graymid: '#CCCBCD' } } }
+      theme: {
+        extend: {
+          colors: {
+            brand: '#A88C5D',
+            dark: '#1F2937',
+            soft: '#E5E7EB',
+            mid: '#D1D5DB'
+          }
+        }
+      }
     }
   </script>
   <link rel="manifest" href="manifest.webmanifest">
@@ -22,23 +31,6 @@
   <link rel="apple-touch-icon" href="static/icons/logo.png">
 
   <style>
-    body::before {
-      content: "";
-      position: fixed;
-      inset: 0;
-      z-index: -2;
-      background: url("static/bg.jpg") center/cover no-repeat;
-      filter: brightness(1.02);
-    }
-
-    body::after {
-      content: "";
-      position: fixed;
-      inset: 0;
-      z-index: -1;
-      background: linear-gradient(to bottom, rgba(255, 255, 255, .85), rgba(255, 255, 255, .9));
-    }
-
     .no-scrollbar::-webkit-scrollbar {
       display: none;
     }
@@ -64,14 +56,14 @@
         <h1 id="brandTitle" class="text-xl font-semibold" style="color:#AF9778">Termin Manager</h1>
       </div>
       <div class="flex items-center gap-2 justify-self-end">
-        <button id="btnMenu" class="sm:hidden p-2 rounded-xl bg-graysoft hover:bg-graymid" aria-label="Menue">Menu</button>
+        <button id="btnMenu" class="sm:hidden p-2 rounded-xl bg-soft hover:bg-mid text-dark" aria-label="Menue">Menue</button>
         <div class="hidden sm:flex gap-2">
-          <button id="btnManageSlots" class="px-3 py-2 rounded-xl bg-graysoft hover:bg-graymid text-sm">Termine verwalten</button>
-          <button id="btnExportCsv" class="px-3 py-2 rounded-xl bg-graysoft hover:bg-graymid text-sm">CSV Export</button>
-          <button id="btnBackup" class="px-3 py-2 rounded-xl bg-graysoft hover:bg-graymid text-sm">Backup</button>
-          <label for="fileRestore" class="px-3 py-2 rounded-xl bg-graysoft hover:bg-graymid text-sm cursor-pointer">Wiederherstellen</label>
+          <button id="btnManageSlots" class="px-3 py-2 rounded-xl bg-dark text-white hover:opacity-90 text-sm">Termin anlegen</button>
+          <button id="btnExportCsv" class="px-3 py-2 rounded-xl bg-soft hover:bg-mid text-sm text-dark">CSV Export</button>
+          <button id="btnBackup" class="px-3 py-2 rounded-xl bg-brand text-white hover:opacity-90 text-sm">Backup</button>
+          <label for="fileRestore" class="px-3 py-2 rounded-xl bg-soft hover:bg-mid text-sm cursor-pointer text-dark">Wiederherstellen</label>
           <input type="file" id="fileRestore" accept="application/json" class="hidden">
-          <button id="btnArchiveView" class="px-3 py-2 rounded-xl bg-graysoft hover:bg-graymid text-sm">Archiv</button>
+          <button id="btnArchiveView" class="px-3 py-2 rounded-xl bg-soft hover:bg-mid text-sm text-dark">Archiv</button>
         </div>
       </div>
     </div>
@@ -82,15 +74,15 @@
     <div class="absolute inset-0 bg-black/40" data-close="mobilemenu"></div>
     <div id="mobilePanel" class="absolute right-0 top-0 h-full w-[80%] max-w-xs bg-white shadow-2xl p-4 flex flex-col gap-3 translate-x-full transition-transform duration-200">
       <div class="flex items-center justify-between mb-2">
-        <span class="text-lg font-semibold" style="color:#AF9778">Menue</span>
+        <span class="text-lg font-semibold" style="color:#A88C5D">Menue</span>
         <button class="text-slate-500 hover:text-slate-700" data-close="mobilemenu">X</button>
       </div>
-      <button id="m_btnManageSlots" class="px-3 py-3 rounded-xl bg-graysoft text-left">Termine verwalten</button>
-      <button id="m_btnExportCsv" class="px-3 py-3 rounded-xl bg-graysoft text-left">CSV Export</button>
-      <button id="m_btnBackup" class="px-3 py-3 rounded-xl bg-graysoft text-left">Backup</button>
-      <label for="m_fileRestore" class="px-3 py-3 rounded-xl bg-graysoft text-left cursor-pointer">Wiederherstellen</label>
+      <button id="m_btnManageSlots" class="px-3 py-3 rounded-xl bg-soft text-left text-dark">Termin anlegen</button>
+      <button id="m_btnExportCsv" class="px-3 py-3 rounded-xl bg-soft text-left text-dark">CSV Export</button>
+      <button id="m_btnBackup" class="px-3 py-3 rounded-xl bg-soft text-left text-dark">Backup</button>
+      <label for="m_fileRestore" class="px-3 py-3 rounded-xl bg-soft text-left cursor-pointer text-dark">Wiederherstellen</label>
       <input type="file" id="m_fileRestore" accept="application/json" class="hidden">
-      <button id="m_btnArchiveView" class="px-3 py-3 rounded-xl bg-graysoft text-left">Archiv</button>
+      <button id="m_btnArchiveView" class="px-3 py-3 rounded-xl bg-soft text-left text-dark">Archiv</button>
     </div>
   </div>
 
@@ -124,8 +116,8 @@
   <!-- Suche + Filter -->
   <section class="max-w-4xl mx-auto px-4">
     <div class="grid grid-cols-1 sm:grid-cols-[1fr_auto] gap-3 my-3">
-      <input id="search" class="w-full px-3 py-3 rounded-xl border border-graymid/60 bg-white/80 backdrop-blur" placeholder="Suche nach Datum, Titel">
-      <select id="filterStatus" class="px-3 py-3 rounded-xl border border-graymid/60 bg-white/80 min-w-[120px]">
+      <input id="search" class="w-full px-3 py-3 rounded-xl border border-mid/60 bg-white/90 backdrop-blur" placeholder="Suche nach Datum, Titel">
+      <select id="filterStatus" class="px-3 py-3 rounded-xl border border-mid/60 bg-white/90 min-w-[120px]">
         <option value="">alle</option>
         <option value="open">offen</option>
         <option value="full">voll</option>
@@ -140,13 +132,13 @@
 
   <!-- Backups -->
   <section class="max-w-4xl mx-auto px-4 pb-10 space-y-4">
-    <div class="bg-white/85 border border-gray-200 rounded-2xl p-4 shadow-sm">
-      <h3 class="font-semibold mb-2" style="color:#AF9778">Lokale Backups (letzte 10)</h3>
+    <div class="bg-white/90 border border-gray-200 rounded-2xl p-4 shadow-sm">
+      <h3 class="font-semibold mb-2" style="color:#A88C5D">Lokale Sicherungen (letzte 10)</h3>
       <ul id="localBackups" class="space-y-1 text-sm"></ul>
     </div>
-    <details class="bg-white/85 border border-gray-200 rounded-2xl p-4 shadow-sm" open>
-      <summary class="font-semibold cursor-pointer" style="color:#AF9778">Einstellungen & Cloud</summary>
-      <div class="text-sm text-slate-700 mt-2">Cloud-Sicherungen laufen automatisch nach Login.</div>
+    <details class="bg-white/90 border border-gray-200 rounded-2xl p-4 shadow-sm" open>
+      <summary class="font-semibold cursor-pointer" style="color:#A88C5D">Einstellungen & Cloud</summary>
+      <div class="text-sm text-slate-700 mt-2">Cloud-Sicherung läuft automatisch nach Login.</div>
       <h4 class="font-semibold mt-3">Cloud-Backups</h4>
       <ul id="serverBackups" class="space-y-1 text-sm"></ul>
       <div id="debugPanel" class="hidden text-xs text-slate-600 bg-yellow-50 border border-yellow-200 rounded-xl px-3 py-2 mt-3"></div>
