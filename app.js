@@ -703,78 +703,60 @@
     bindDynamicListHandlers();
   }
 
+  let listEventListenerBound = false;
   function bindDynamicListHandlers() {
-    qsa("[data-open-booking]").forEach((btn) =>
-      btn.addEventListener("click", (e) => {
-        e.preventDefault();
-        try {
-          openBooking(btn.dataset.openBooking);
-        } catch (err) {
-          console.warn("openBooking failed", err);
-          showToast("Aktion fehlgeschlagen", "error");
-        }
-      })
-    );
-    qsa("[data-edit-slot]").forEach((btn) =>
-      btn.addEventListener("click", (e) => {
-        e.preventDefault();
-        try {
-          editSlot(btn.dataset.editSlot);
-        } catch (err) {
-          console.warn("editSlot failed", err);
-          showToast("Aktion fehlgeschlagen", "error");
-        }
-      })
-    );
-    qsa("[data-toggle-archive]").forEach((btn) =>
-      btn.addEventListener("click", (e) => {
-        e.preventDefault();
-        try {
-          toggleArchive(btn.dataset.toggleArchive, btn.dataset.flag === "true");
-        } catch (err) {
-          console.warn("toggleArchive failed", err);
-          showToast("Aktion fehlgeschlagen", "error");
-        }
-      })
-    );
-    qsa("[data-delete-slot]").forEach((btn) =>
-      btn.addEventListener("click", (e) => {
-        e.preventDefault();
-        try {
-          confirmDeleteSlot(btn.dataset.deleteSlot);
-        } catch (err) {
-          console.warn("deleteSlot failed", err);
-          showToast("Aktion fehlgeschlagen", "error");
-        }
-      })
-    );
-    qsa("[data-ics]").forEach((btn) =>
-      btn.addEventListener("click", (e) => {
-        e.preventDefault();
-        try {
-          downloadICS(btn.dataset.ics);
-        } catch (err) {
-          console.warn("ics failed", err);
-          showToast("Aktion fehlgeschlagen", "error");
-        }
-      })
-    );
-    qsa("[data-booking]").forEach((li) =>
-      li.addEventListener("click", (e) => {
-        e.preventDefault();
-        try {
-          editBooking(li.dataset.booking);
-        } catch (err) {
-          console.warn("editBooking failed", err);
-          showToast("Aktion fehlgeschlagen", "error");
-        }
-      })
-    );
+    const listEl = qs("#list");
+    if (!listEl) return;
 
+    // Event-Delegation: Ein Listener für alle Buttons
+    if (!listEventListenerBound) {
+      listEl.addEventListener("click", (e) => {
+        const target = e.target.closest("button, li[data-booking]");
+        if (!target) return;
+
+        try {
+          if (target.hasAttribute("data-open-booking")) {
+            e.preventDefault();
+            openBooking(target.dataset.openBooking);
+          } else if (target.hasAttribute("data-edit-slot")) {
+            e.preventDefault();
+            editSlot(target.dataset.editSlot);
+          } else if (target.hasAttribute("data-toggle-archive")) {
+            e.preventDefault();
+            toggleArchive(target.dataset.toggleArchive, target.dataset.flag === "true");
+          } else if (target.hasAttribute("data-delete-slot")) {
+            e.preventDefault();
+            confirmDeleteSlot(target.dataset.deleteSlot);
+          } else if (target.hasAttribute("data-ics")) {
+            e.preventDefault();
+            downloadICS(target.dataset.ics);
+          } else if (target.hasAttribute("data-booking")) {
+            e.preventDefault();
+            editBooking(target.dataset.booking);
+          }
+        } catch (err) {
+          console.warn("Button action failed", err);
+          showToast("Aktion fehlgeschlagen", "error");
+        }
+      });
+      listEventListenerBound = true;
+    }
+
+    // Details-Toggle-Listener (werden bei jedem Render neu gebunden)
     const act = qs("#activeSection");
     const arch = qs("#archSection");
-    if (act) act.addEventListener("toggle", () => updateCollapse("collapsedActive", !act.open));
-    if (arch) arch.addEventListener("toggle", () => updateCollapse("collapsedArchive", !arch.open));
+    if (act) {
+      const newAct = act.cloneNode(true);
+      act.replaceWith(newAct);
+      const refreshedAct = qs("#activeSection");
+      if (refreshedAct) refreshedAct.addEventListener("toggle", () => updateCollapse("collapsedActive", !refreshedAct.open));
+    }
+    if (arch) {
+      const newArch = arch.cloneNode(true);
+      arch.replaceWith(newArch);
+      const refreshedArch = qs("#archSection");
+      if (refreshedArch) refreshedArch.addEventListener("toggle", () => updateCollapse("collapsedArchive", !refreshedArch.open));
+    }
   }
 
   async function updateCollapse(key, value) {
