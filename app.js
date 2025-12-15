@@ -527,6 +527,9 @@
   document.addEventListener("keydown", (e) => {
     if (e.key === "Escape") [modalBooking, modalSlots, modalConfirmDelete, modalBackupImport].forEach((m) => closeModal(m));
   });
+  qsa("[data-close='booking']").forEach((b) => b.addEventListener("click", () => closeModal(modalBooking)));
+  qsa("[data-close='slots']").forEach((b) => b.addEventListener("click", () => closeModal(modalSlots)));
+  qsa("[data-close='backup']").forEach((b) => b.addEventListener("click", () => closeModal(modalBackupImport)));
 
   /* ---------- Domain helpers ---------- */
   const CATS = ["Workshop", "Kurs", "Event", "Seminar", "Private Gruppe", "Sonstiges"];
@@ -1169,6 +1172,8 @@ Stefanie`;
   const mobileMenu = qs("#mobileMenu");
   const mobilePanel = qs("#mobilePanel");
   const btnMenu = qs("#btnMenu");
+  const mBtnLogout = qs("#m_btnLogout");
+  const mBtnLogin = qs("#m_btnLogin");
   function openMobileMenu() {
     if (!mobileMenu || !mobilePanel) return;
     mobileMenu.classList.remove("hidden");
@@ -1195,6 +1200,15 @@ Stefanie`;
   qs("#m_btnArchiveView")?.addEventListener("click", () => {
     closeMobileMenu();
     qs("#btnArchiveView")?.click();
+  });
+  mBtnLogin?.addEventListener("click", () => {
+    closeMobileMenu();
+    const email = qs("#authEmail");
+    if (email) email.focus();
+  });
+  mBtnLogout?.addEventListener("click", () => {
+    closeMobileMenu();
+    btnLogout?.click();
   });
 
   /* ---------- Archive Jump ---------- */
@@ -1299,6 +1313,10 @@ Stefanie`;
     if (authStatus) authStatus.textContent = state.user?.email ? `Angemeldet als ${state.user.email}` : "Nicht angemeldet";
     if (cloudStatus) cloudStatus.textContent = isCloudReady(state) ? "Cloud-Sicherung: aktiv" : "Cloud-Sicherung: nicht angemeldet";
     if (btnLogout) btnLogout.classList.toggle("hidden", !state.user);
+    const mBtnLogout = qs("#m_btnLogout");
+    const mBtnLogin = qs("#m_btnLogin");
+    mBtnLogout?.classList.toggle("hidden", !state.user);
+    mBtnLogin?.classList.toggle("hidden", !!state.user);
     if (authForm) authForm.classList.toggle("hidden", !!state.user);
     if (teamSelect) {
       const orgs = state.orgs || [];
