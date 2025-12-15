@@ -773,18 +773,8 @@
 
     const act = qs("#activeSection");
     const arch = qs("#archSection");
-    if (act) {
-      const cloned = act.cloneNode(true);
-      act.parentNode.replaceChild(cloned, act);
-      const newAct = qs("#activeSection");
-      if (newAct) newAct.addEventListener("toggle", () => updateCollapse("collapsedActive", !newAct.open));
-    }
-    if (arch) {
-      const cloned = arch.cloneNode(true);
-      arch.parentNode.replaceChild(cloned, arch);
-      const newArch = qs("#archSection");
-      if (newArch) newArch.addEventListener("toggle", () => updateCollapse("collapsedArchive", !newArch.open));
-    }
+    if (act) act.addEventListener("toggle", () => updateCollapse("collapsedActive", !act.open));
+    if (arch) arch.addEventListener("toggle", () => updateCollapse("collapsedArchive", !arch.open));
   }
 
   async function updateCollapse(key, value) {
