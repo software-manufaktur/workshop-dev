@@ -667,7 +667,7 @@
   const rowTitleOther = qs("#row_title_other");
   const slTitleOther = qs("#sl_title_other");
   slCat?.addEventListener("change", () => {
-    rowTitleOther.style.display = slCat.value === "Sonstiges" ? "block" : "none";
+    if (rowTitleOther) rowTitleOther.style.display = slCat.value === "Sonstiges" ? "block" : "none";
   });
   qs("#btnManageSlots")?.addEventListener("click", () => openSlotCreate());
   qs("#m_btnManageSlots")?.addEventListener("click", () => {
@@ -675,33 +675,41 @@
     openSlotCreate();
   });
   function openSlotCreate() {
+    if (!slCat || !rowTitleOther || !slTitleOther) return;
     const now = new Date();
     now.setMinutes(0, 0, 0);
     const s = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 17);
     const e = new Date(s.getTime() + 2 * 3600 * 1000);
     slCat.value = "Schmuck-Workshop";
-    rowTitleOther.style.display = "none";
-    slTitleOther.value = "";
-    qs("#sl_capacity").value = 10;
-    qs("#sl_starts").value = toLocal(s);
-    qs("#sl_ends").value = toLocal(e);
+    if (rowTitleOther) rowTitleOther.style.display = "none";
+    if (slTitleOther) slTitleOther.value = "";
+    const cap = qs("#sl_capacity");
+    const st = qs("#sl_starts");
+    const en = qs("#sl_ends");
+    if (cap) cap.value = 10;
+    if (st) st.value = toLocal(s);
+    if (en) en.value = toLocal(e);
     bindCreateSlotHandler();
     openModal(modalSlots);
     setFocus(qs("#sl_capacity"));
   }
   function bindCreateSlotHandler() {
+    if (!formSlot) return;
     formSlot.onsubmit = async (ev) => {
       ev.preventDefault();
-      const title = slCat.value === "Sonstiges" ? slTitleOther.value.trim() || "Schmuck-Workshop" : slCat.value;
+      const title = slCat && slCat.value === "Sonstiges" ? (slTitleOther?.value || "").trim() || "Schmuck-Workshop" : slCat?.value;
+      const capEl = qs("#sl_capacity");
+      const stEl = qs("#sl_starts");
+      const enEl = qs("#sl_ends");
       const slot = {
         id: uid(),
         title,
-        capacity: Number(qs("#sl_capacity").value || 0),
-        starts_at: new Date(qs("#sl_starts").value).toISOString(),
-        ends_at: new Date(qs("#sl_ends").value).toISOString(),
+        capacity: Number(capEl?.value || 0),
+        starts_at: stEl ? new Date(stEl.value).toISOString() : new Date().toISOString(),
+        ends_at: enEl ? new Date(enEl.value).toISOString() : new Date().toISOString(),
         archived: false,
       };
-      if (!slot.capacity || !qs("#sl_starts").value || !qs("#sl_ends").value) {
+      if (!slot.capacity || !stEl?.value || !enEl?.value) {
         showToast("Bitte Start, Ende und Kapazitaet angeben.", "error");
         return;
       }
@@ -721,28 +729,38 @@
     const state = await storage.getState();
     const s = (state.slots || []).find((x) => x.id === id);
     if (!s) return;
-    if (CATS.includes(s.title)) {
-      slCat.value = s.title;
-      rowTitleOther.style.display = "none";
-      slTitleOther.value = "";
-    } else {
-      slCat.value = "Sonstiges";
-      rowTitleOther.style.display = "block";
-      slTitleOther.value = s.title;
+    if (!formSlot) return;
+    if (slCat) {
+      if (CATS.includes(s.title)) {
+        slCat.value = s.title;
+        if (rowTitleOther) rowTitleOther.style.display = "none";
+        if (slTitleOther) slTitleOther.value = "";
+      } else {
+        slCat.value = "Sonstiges";
+        if (rowTitleOther) rowTitleOther.style.display = "block";
+        if (slTitleOther) slTitleOther.value = s.title;
+      }
     }
-    qs("#sl_capacity").value = s.capacity;
-    qs("#sl_starts").value = toLocal(new Date(s.starts_at));
-    qs("#sl_ends").value = toLocal(new Date(s.ends_at));
+    const cap = qs("#sl_capacity");
+    const st = qs("#sl_starts");
+    const en = qs("#sl_ends");
+    if (cap) cap.value = s.capacity;
+    if (st) st.value = toLocal(new Date(s.starts_at));
+    if (en) en.value = toLocal(new Date(s.ends_at));
     formSlot.onsubmit = async (ev) => {
       ev.preventDefault();
       try {
         await updateState((draft) => {
           const slot = draft.slots.find((x) => x.id === id);
           if (!slot) return;
-          slot.title = slCat.value === "Sonstiges" ? slTitleOther.value.trim() || slot.title : slCat.value;
-          slot.capacity = Number(qs("#sl_capacity").value || 0);
-          slot.starts_at = new Date(qs("#sl_starts").value).toISOString();
-          slot.ends_at = new Date(qs("#sl_ends").value).toISOString();
+          const titleVal = slCat && slCat.value === "Sonstiges" ? (slTitleOther?.value || "").trim() || slot.title : slCat?.value || slot.title;
+          slot.title = titleVal;
+          const capEl = qs("#sl_capacity");
+          const stEl = qs("#sl_starts");
+          const enEl = qs("#sl_ends");
+          slot.capacity = Number(capEl?.value || 0);
+          if (stEl?.value) slot.starts_at = new Date(stEl.value).toISOString();
+          if (enEl?.value) slot.ends_at = new Date(enEl.value).toISOString();
           draft.meta.lastSaveAt = new Date().toISOString();
         });
         closeModal(modalSlots);
@@ -768,6 +786,7 @@
 
   function confirmDeleteSlot(id) {
     pendingDeleteSlotId = id;
+    if (!modalConfirmDelete) return;
     modalConfirmDelete.classList.remove("hidden");
     modalConfirmDelete.classList.add("flex");
   }
@@ -787,6 +806,7 @@
     closeConfirmDelete();
   });
   function closeConfirmDelete() {
+    if (!modalConfirmDelete) return;
     modalConfirmDelete.classList.add("hidden");
     modalConfirmDelete.classList.remove("flex");
     pendingDeleteSlotId = null;
@@ -801,13 +821,19 @@
   function openBooking(slotId) {
     ctx.currentSlotId = slotId;
     ctx.currentBookingId = null;
-    qs("#bk_name").value = "";
-    qs("#bk_phone").value = "";
-    qs("#bk_notes").value = "";
-    qs("#bk_count").value = 1;
+    const nameEl = qs("#bk_name");
+    const phoneEl = qs("#bk_phone");
+    const notesEl = qs("#bk_notes");
+    const countEl = qs("#bk_count");
+    if (nameEl) nameEl.value = "";
+    if (phoneEl) phoneEl.value = "";
+    if (notesEl) notesEl.value = "";
+    if (countEl) countEl.value = 1;
     if (selChannel) selChannel.value = "";
-    if (qs("#bk_salutation")) qs("#bk_salutation").value = "Liebe/r";
-    qs("#modalBookingTitle").textContent = "Buchung hinzufuegen";
+    const sal = qs("#bk_salutation");
+    if (sal) sal.value = "Liebe/r";
+    const modalTitle = qs("#modalBookingTitle");
+    if (modalTitle) modalTitle.textContent = "Buchung hinzufuegen";
     toggleDeleteButton(false);
     btnWhatsappShare?.classList.add("hidden");
     openModal(modalBooking);
@@ -820,13 +846,19 @@
     if (!b) return;
     ctx.currentSlotId = b.slotId;
     ctx.currentBookingId = b.id;
-    qs("#bk_name").value = b.name;
-    qs("#bk_phone").value = b.phone;
-    qs("#bk_notes").value = b.notes || "";
-    qs("#bk_count").value = b.count;
+    const nameEl = qs("#bk_name");
+    const phoneEl = qs("#bk_phone");
+    const notesEl = qs("#bk_notes");
+    const countEl = qs("#bk_count");
+    if (nameEl) nameEl.value = b.name;
+    if (phoneEl) phoneEl.value = b.phone;
+    if (notesEl) notesEl.value = b.notes || "";
+    if (countEl) countEl.value = b.count;
     if (selChannel) selChannel.value = b.channel || "";
-    if (qs("#bk_salutation")) qs("#bk_salutation").value = b.salutation || "Liebe/r";
-    qs("#modalBookingTitle").textContent = "Buchung bearbeiten";
+    const sal = qs("#bk_salutation");
+    if (sal) sal.value = b.salutation || "Liebe/r";
+    const modalTitle = qs("#modalBookingTitle");
+    if (modalTitle) modalTitle.textContent = "Buchung bearbeiten";
     toggleDeleteButton(true);
     btnWhatsappShare?.classList.remove("hidden");
     btnWhatsappShare.onclick = () => openWhatsappConfirmation(b);
@@ -882,16 +914,25 @@ Stefanie`;
     }
     const editing = !!ctx.currentBookingId;
     const old = editing ? state.bookings.find((x) => x.id === ctx.currentBookingId) : null;
+    const nameEl = qs("#bk_name");
+    const phoneEl = qs("#bk_phone");
+    const notesEl = qs("#bk_notes");
+    const countEl = qs("#bk_count");
+    const salEl = qs("#bk_salutation");
+    if (!nameEl || !phoneEl || !countEl) {
+      showToast("Formular unvollstaendig.", "error");
+      return;
+    }
     const booking = {
-      id: editing ? old.id : uid(),
+      id: editing && old ? old.id : uid(),
       slotId: slot.id,
-      salutation: qs("#bk_salutation")?.value || "Liebe/r",
-      name: qs("#bk_name").value.trim(),
-      phone: qs("#bk_phone").value.trim(),
-      notes: qs("#bk_notes").value.trim(),
-      count: Number(qs("#bk_count").value || 0),
+      salutation: salEl?.value || "Liebe/r",
+      name: nameEl.value.trim(),
+      phone: phoneEl.value.trim(),
+      notes: notesEl?.value?.trim() || "",
+      count: Number(countEl.value || 0),
       channel: selChannel ? selChannel.value : "",
-      created_at: editing ? old.created_at : new Date().toISOString(),
+      created_at: editing && old ? old.created_at : new Date().toISOString(),
     };
     if (!booking.name || !booking.phone || !booking.count) {
       showToast("Bitte Name, Telefon und Personenanzahl angeben.", "error");
@@ -1241,7 +1282,7 @@ Stefanie`;
 
   authForm?.addEventListener("submit", async (e) => {
     e.preventDefault();
-    if (!inputEmail.value) {
+    if (!inputEmail || !inputEmail.value) {
       showToast("Bitte E-Mail eingeben", "error");
       return;
     }
