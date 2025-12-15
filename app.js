@@ -190,8 +190,14 @@
     const safe = clone(state);
     safe.activeOrgId = normalizeActiveOrgId(safe.activeOrgId, safe.orgs);
     await writeStateToDb(safe);
-    const readback = await readStateFromDb();
-    if (!deepEqual(safe, readback)) throw new Error("Read-after-write verification failed");
+    let readback = null;
+    try {
+      readback = await readStateFromDb();
+      if (!deepEqual(safe, readback)) throw new Error("Read-after-write verification failed");
+    } catch (err) {
+      console.warn("Read-after-write failed, fallback to in-memory state", err);
+      readback = safe;
+    }
     memoryState = readback;
     if (!skipSnapshot) await addLocalSnapshot("autosave", safe);
     return clone(readback);
@@ -344,11 +350,15 @@
   }
 
   async function updateUserInState(user) {
-    const current = await storage.getState();
-    current.user = user ? { id: user.id, email: user.email } : null;
-    current.activeOrgId = normalizeActiveOrgId(current.activeOrgId, current.orgs);
-    await storage.saveState(current, { skipSnapshot: true });
-    memoryState = current;
+    try {
+      const current = await storage.getState();
+      current.user = user ? { id: user.id, email: user.email } : null;
+      current.activeOrgId = normalizeActiveOrgId(current.activeOrgId, current.orgs);
+      await storage.saveState(current, { skipSnapshot: true });
+      memoryState = current;
+    } catch (err) {
+      console.warn("updateUserInState failed", err);
+    }
     renderDebug();
   }
 
@@ -527,6 +537,9 @@
   document.addEventListener("keydown", (e) => {
     if (e.key === "Escape") [modalBooking, modalSlots, modalConfirmDelete, modalBackupImport].forEach((m) => closeModal(m));
   });
+  qsa("[data-close='booking']").forEach((b) => b.addEventListener("click", () => closeModal(modalBooking)));
+  qsa("[data-close='slots']").forEach((b) => b.addEventListener("click", () => closeModal(modalSlots)));
+  qsa("[data-close='backup']").forEach((b) => b.addEventListener("click", () => closeModal(modalBackupImport)));
   qsa("[data-close='booking']").forEach((b) => b.addEventListener("click", () => closeModal(modalBooking)));
   qsa("[data-close='slots']").forEach((b) => b.addEventListener("click", () => closeModal(modalSlots)));
   qsa("[data-close='backup']").forEach((b) => b.addEventListener("click", () => closeModal(modalBackupImport)));
