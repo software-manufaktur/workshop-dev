@@ -1,8 +1,8 @@
 {
   "name": "SeeYou Workshops",
   "short_name": "SeeYou",
-  "description": "Terminverwaltung für Schmuck-Workshops",
-  "start_url": "./index.html",
+  "description": "Terminverwaltung fuer Schmuck-Workshops",
+  "start_url": "./",
   "scope": "./",
   "display": "standalone",
   "theme_color": "#AF9778",

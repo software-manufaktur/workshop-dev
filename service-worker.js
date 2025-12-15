@@ -1,5 +1,7 @@
-// Simple App-Shell SW
-const CACHE = "seeyou-v1.0.1";
+const CACHE_VERSION = "v2";
+const STATIC_CACHE = `workshop-static-${CACHE_VERSION}`;
+const RUNTIME_CACHE = `workshop-runtime-${CACHE_VERSION}`;
+
 const PRECACHE = [
   "./",
   "./index.html",
@@ -7,45 +9,88 @@ const PRECACHE = [
   "./manifest.webmanifest",
   "./static/logo.png",
   "./static/bg.jpg",
-  "https://cdn.tailwindcss.com" // wird als 'opaque' gecacht – reicht fürs Offline
+  "./static/icons/logo.png",
 ];
 
-// Install: Precache
 self.addEventListener("install", (event) => {
   event.waitUntil(
-    caches.open(CACHE).then((cache) => cache.addAll(PRECACHE)).then(() => self.skipWaiting())
+    caches.open(STATIC_CACHE).then((cache) => cache.addAll(PRECACHE))
   );
 });
 
-// Activate: alte Caches aufräumen
 self.addEventListener("activate", (event) => {
   event.waitUntil(
-    caches.keys().then(keys =>
-      Promise.all(keys.filter(k => k !== CACHE).map(k => caches.delete(k)))
+    caches.keys().then((keys) =>
+      Promise.all(
+        keys
+          .filter((k) => k !== STATIC_CACHE && k !== RUNTIME_CACHE)
+          .map((k) => caches.delete(k))
+      )
     ).then(() => self.clients.claim())
   );
 });
 
-// Fetch: Cache-first, dann Netz; bei Fehler auf index.html zurückfallen
+self.addEventListener("message", (event) => {
+  if (event.data && event.data.type === "SKIP_WAITING") {
+    self.skipWaiting();
+  }
+});
+
+const ASSET_EXT = /\.(?:js|css|png|jpg|jpeg|svg|webmanifest)$/i;
+
 self.addEventListener("fetch", (event) => {
   const req = event.request;
   if (req.method !== "GET") return;
+  const url = new URL(req.url);
 
-  event.respondWith(
-    caches.match(req).then((cached) => {
-      if (cached) {
-        // im Hintergrund aktualisieren (SWAP)
-        fetch(req).then((res) => {
-          if (res && res.ok) caches.open(CACHE).then((c) => c.put(req, res.clone()));
-        }).catch(()=>{});
-        return cached;
-      }
-      return fetch(req)
-        .then((res) => {
-          if (res && res.ok) caches.open(CACHE).then((c) => c.put(req, res.clone()));
-          return res;
-        })
-        .catch(() => caches.match("./index.html"));
-    })
-  );
+  // Navigation / HTML -> network-first
+  if (req.mode === "navigate" || (req.headers.get("accept") || "").includes("text/html")) {
+    event.respondWith(networkFirst(req));
+    return;
+  }
+
+  // Static assets -> cache-first
+  if (ASSET_EXT.test(url.pathname) || PRECACHE.some((p) => url.pathname.endsWith(p.replace("./", "/")))) {
+    event.respondWith(cacheFirst(req));
+    return;
+  }
+
+  // Default: try cache, then network
+  event.respondWith(cacheFirst(req, true));
 });
+
+async function networkFirst(req) {
+  try {
+    const fresh = await fetch(req);
+    const cache = await caches.open(STATIC_CACHE);
+    cache.put(req, fresh.clone());
+    return fresh;
+  } catch (err) {
+    const cached = await caches.match(req, { ignoreSearch: true });
+    if (cached) return cached;
+    return caches.match("./index.html");
+  }
+}
+
+async function cacheFirst(req, fallbackToNetwork = false) {
+  const cached = await caches.match(req, { ignoreSearch: true });
+  if (cached) return cached;
+  if (!fallbackToNetwork) {
+    try {
+      const res = await fetch(req);
+      const cache = await caches.open(RUNTIME_CACHE);
+      cache.put(req, res.clone());
+      return res;
+    } catch (err) {
+      return caches.match("./index.html");
+    }
+  }
+  try {
+    const res = await fetch(req);
+    const cache = await caches.open(RUNTIME_CACHE);
+    cache.put(req, res.clone());
+    return res;
+  } catch (err) {
+    return caches.match("./index.html");
+  }
+}
