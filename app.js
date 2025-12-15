@@ -675,7 +675,8 @@
 
     const listEl = qs("#list");
     if (!listEl) return;
-    listEl.innerHTML = `
+    try {
+      listEl.innerHTML = `
       <details id="activeSection" class="mb-6" ${state.ui?.collapsedActive ? "" : "open"}>
         <summary class="list-none cursor-pointer select-none rounded-xl px-3 py-2 bg-slate-200/70 hover:bg-slate-300/70 border border-gray-200 flex items-center justify-between shadow-sm">
           <span class="font-medium">Aktuell (${active.length})</span>
@@ -696,6 +697,9 @@
             </details>`
           : ""
       }`;
+    } catch (err) {
+      console.warn("Render error", err);
+    }
     bindDynamicListHandlers();
   }
 

@@ -58,12 +58,12 @@
       <div class="flex items-center gap-2 justify-self-end">
         <button id="btnMenu" class="sm:hidden p-2 rounded-xl bg-soft hover:bg-mid text-dark" aria-label="Menue">Menue</button>
         <div class="hidden sm:flex gap-2">
-          <button id="btnManageSlots" class="px-3 py-2 rounded-xl bg-dark text-white hover:opacity-90 text-sm">Termin anlegen</button>
-          <button id="btnExportCsv" class="px-3 py-2 rounded-xl bg-soft hover:bg-mid text-sm text-dark">CSV Export</button>
-          <button id="btnBackup" class="px-3 py-2 rounded-xl bg-brand text-white hover:opacity-90 text-sm">Backup</button>
+          <button id="btnManageSlots" type="button" class="px-3 py-2 rounded-xl bg-dark text-white hover:opacity-90 text-sm">Termin anlegen</button>
+          <button id="btnExportCsv" type="button" class="px-3 py-2 rounded-xl bg-soft hover:bg-mid text-sm text-dark">CSV Export</button>
+          <button id="btnBackup" type="button" class="px-3 py-2 rounded-xl bg-brand text-white hover:opacity-90 text-sm">Backup</button>
           <label for="fileRestore" class="px-3 py-2 rounded-xl bg-soft hover:bg-mid text-sm cursor-pointer text-dark">Wiederherstellen</label>
           <input type="file" id="fileRestore" accept="application/json" class="hidden">
-          <button id="btnArchiveView" class="px-3 py-2 rounded-xl bg-soft hover:bg-mid text-sm text-dark">Archiv</button>
+          <button id="btnArchiveView" type="button" class="px-3 py-2 rounded-xl bg-soft hover:bg-mid text-sm text-dark">Archiv</button>
         </div>
       </div>
     </div>
@@ -78,15 +78,15 @@
         <button class="text-slate-500 hover:text-slate-700" data-close="mobilemenu">X</button>
       </div>
       <div class="text-xs uppercase tracking-wide text-slate-500">Hauptbereich</div>
-      <button id="m_btnManageSlots" class="px-3 py-3 rounded-xl bg-soft text-left text-dark">Termin anlegen</button>
-      <button id="m_btnExportCsv" class="px-3 py-3 rounded-xl bg-soft text-left text-dark">CSV Export</button>
-      <button id="m_btnBackup" class="px-3 py-3 rounded-xl bg-soft text-left text-dark">Backup exportieren</button>
+      <button id="m_btnManageSlots" type="button" class="px-3 py-3 rounded-xl bg-soft text-left text-dark">Termin anlegen</button>
+      <button id="m_btnExportCsv" type="button" class="px-3 py-3 rounded-xl bg-soft text-left text-dark">CSV Export</button>
+      <button id="m_btnBackup" type="button" class="px-3 py-3 rounded-xl bg-soft text-left text-dark">Backup exportieren</button>
       <label for="m_fileRestore" class="px-3 py-3 rounded-xl bg-soft text-left cursor-pointer text-dark">Backup importieren</label>
       <input type="file" id="m_fileRestore" accept="application/json" class="hidden">
-      <button id="m_btnArchiveView" class="px-3 py-3 rounded-xl bg-soft text-left text-dark">Archiv</button>
+      <button id="m_btnArchiveView" type="button" class="px-3 py-3 rounded-xl bg-soft text-left text-dark">Archiv</button>
       <div class="text-xs uppercase tracking-wide text-slate-500 mt-4">Konto & Einstellungen</div>
-      <button id="m_btnLogin" class="px-3 py-3 rounded-xl bg-soft text-left text-dark">Anmelden</button>
-      <button id="m_btnLogout" class="px-3 py-3 rounded-xl bg-soft text-left text-dark hidden">Abmelden</button>
+      <button id="m_btnLogin" type="button" class="px-3 py-3 rounded-xl bg-soft text-left text-dark">Anmelden</button>
+      <button id="m_btnLogout" type="button" class="px-3 py-3 rounded-xl bg-soft text-left text-dark hidden">Abmelden</button>
     </div>
   </div>
 
