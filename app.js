@@ -68,7 +68,7 @@
   let updateWaitingWorker = null;
   let authUser = null;
   const ctx = { currentSlotId: null, currentBookingId: null, importPreview: null };
-  let readCheckSuppressed = false;
+  const READ_VERIFY = false;
 
   const isUuid = (val) => typeof val === "string" && /^[0-9a-fA-F-]{36}$/.test(val);
   const normalizeActiveOrgId = (id, orgs = []) => {
@@ -191,22 +191,20 @@
     const safe = clone(state);
     safe.activeOrgId = normalizeActiveOrgId(safe.activeOrgId, safe.orgs);
     await writeStateToDb(safe);
-    let readback = null;
-    if (readCheckSuppressed) {
-      readback = safe;
-    } else {
+    if (READ_VERIFY) {
       try {
-        readback = await readStateFromDb();
-        if (!deepEqual(safe, readback)) throw new Error("Read-after-write verification failed");
+        const readback = await readStateFromDb();
+        memoryState = readback;
+        if (!deepEqual(safe, readback)) console.warn("Read-after-write mismatch");
       } catch (err) {
-        console.warn("Read-after-write failed, fallback to in-memory state (suppressed further warnings)", err);
-        readCheckSuppressed = true;
-        readback = safe;
+        console.warn("Read-after-write check failed", err);
+        memoryState = safe;
       }
+    } else {
+      memoryState = safe;
     }
-    memoryState = readback;
     if (!skipSnapshot) await addLocalSnapshot("autosave", safe);
-    return clone(readback);
+    return clone(memoryState);
   }
 
   async function exportBackup() {
@@ -546,6 +544,15 @@
   qsa("[data-close='booking']").forEach((b) => b.addEventListener("click", () => closeModal(modalBooking)));
   qsa("[data-close='slots']").forEach((b) => b.addEventListener("click", () => closeModal(modalSlots)));
   qsa("[data-close='backup']").forEach((b) => b.addEventListener("click", () => closeModal(modalBackupImport)));
+  modalSlots?.addEventListener("click", (e) => {
+    if (e.target === modalSlots) closeModal(modalSlots);
+  });
+  modalBooking?.addEventListener("click", (e) => {
+    if (e.target === modalBooking) closeModal(modalBooking);
+  });
+  modalBackupImport?.addEventListener("click", (e) => {
+    if (e.target === modalBackupImport) closeModal(modalBackupImport);
+  });
 
   /* ---------- Domain helpers ---------- */
   const CATS = ["Workshop", "Kindergeburtstag", "JGA", "Maedelsabend", "Weihnachtsfeier", "Kurs", "Event", "Seminar", "Private Gruppe", "Sonstiges"];
