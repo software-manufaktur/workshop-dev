@@ -27,8 +27,20 @@
     supabaseConfig.SUPABASE_ANON_KEY &&
     !String(supabaseConfig.SUPABASE_URL).includes("YOUR-PROJECT");
   const supabaseClient = supabaseReady
-    ? window.supabase.createClient(supabaseConfig.SUPABASE_URL, supabaseConfig.SUPABASE_ANON_KEY)
-    : null;
+  ? window.supabase.createClient(
+      supabaseConfig.SUPABASE_URL,
+      supabaseConfig.SUPABASE_ANON_KEY,
+      {
+        auth: {
+          persistSession: true,
+          autoRefreshToken: true,
+          detectSessionInUrl: true,
+          flowType: "pkce",
+        },
+      }
+    )
+  : null;
+
 
   const stateDefaults = {
     slots: [],
@@ -1376,17 +1388,42 @@ END:VCALENDAR`;
 
   // ----- Init -----
   async function init() {
-    await storage.getState();
-    maybeShowBackupReminder();
-    renderAll();
-    setupServiceWorkerUpdate();
-    renderStatus();
-    if (supabaseClient) {
-      await loadSession();
-      subscribeAuth();
-      await pullLatestFromServer();
-    }
+  await storage.getState();
+
+  if (supabaseClient) {
+    await handleAuthCallback();
+    await loadSession();
+    subscribeAuth();
+    await pullLatestFromServer();
   }
+
+  maybeShowBackupReminder();
+  renderAll();
+  setupServiceWorkerUpdate();
+  renderStatus();
+}
+
+
+  async function handleAuthCallback() {
+  if (!supabaseClient) return;
+
+  const url = new URL(window.location.href);
+  const code = url.searchParams.get("code");
+
+  // PKCE-Flow
+  if (code) {
+    const { error } = await supabaseClient.auth.exchangeCodeForSession(code);
+    if (error) console.warn("Auth exchange failed:", error);
+
+    // URL aufräumen
+    url.searchParams.delete("code");
+    window.history.replaceState({}, document.title, url.toString());
+  } else {
+    // Fallback: implicit flow (#access_token)
+    await supabaseClient.auth.getSession();
+  }
+}
+
 
   document.addEventListener("DOMContentLoaded", init);
 })();
