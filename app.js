@@ -68,6 +68,7 @@
   let updateWaitingWorker = null;
   let authUser = null;
   const ctx = { currentSlotId: null, currentBookingId: null, importPreview: null };
+  let readCheckSuppressed = false;
 
   const isUuid = (val) => typeof val === "string" && /^[0-9a-fA-F-]{36}$/.test(val);
   const normalizeActiveOrgId = (id, orgs = []) => {
@@ -191,12 +192,17 @@
     safe.activeOrgId = normalizeActiveOrgId(safe.activeOrgId, safe.orgs);
     await writeStateToDb(safe);
     let readback = null;
-    try {
-      readback = await readStateFromDb();
-      if (!deepEqual(safe, readback)) throw new Error("Read-after-write verification failed");
-    } catch (err) {
-      console.warn("Read-after-write failed, fallback to in-memory state", err);
+    if (readCheckSuppressed) {
       readback = safe;
+    } else {
+      try {
+        readback = await readStateFromDb();
+        if (!deepEqual(safe, readback)) throw new Error("Read-after-write verification failed");
+      } catch (err) {
+        console.warn("Read-after-write failed, fallback to in-memory state (suppressed further warnings)", err);
+        readCheckSuppressed = true;
+        readback = safe;
+      }
     }
     memoryState = readback;
     if (!skipSnapshot) await addLocalSnapshot("autosave", safe);
