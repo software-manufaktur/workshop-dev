@@ -128,11 +128,42 @@ Ziel: Offline-first Termin-/Buchungs-App zu einem stabilen, skalierbaren Produkt
 
 ---
 
+## PHASE 8 – Version 2: Website-Integration (Zukunft)
+### 8.1 API/Webhook-System
+- [ ] REST-API für Website-Zugriff auf Termine
+- [ ] Webhook-System für bidirektionale Synchronisierung
+- [ ] Event-Benachrichtigungen (neue Buchung, Änderung, Stornierung)
+- [ ] API-Keys mit Rollen (readonly, readwrite)
+
+### 8.2 Public Booking Widget
+- [ ] Einbettbares Widget für Webseiten (iFrame/Web Component)
+- [ ] Öffentliche Terminübersicht (nur verfügbare Slots)
+- [ ] Buchungsformular mit Validierung
+- [ ] Bestätigungs-E-Mails automatisch versenden
+
+### 8.3 Website-to-App Sync
+- [ ] Import von Terminen aus Website CMS (WordPress, Webflow, etc.)
+- [ ] Automatische Synchronisierung (scheduled)
+- [ ] Konfliktbehandlung bei Überschneidungen
+- [ ] Website zeigt immer aktuelle Verfügbarkeit aus App
+
+### 8.4 Use Cases
+- Anbieter pflegt Termine in App, Website zeigt sie automatisch
+- Buchungen über Website landen direkt in der App
+- Änderungen in App werden auf Website reflektiert
+- Kunden können über Website buchen, ohne separate Plattform
+
+**Ziel:** Nahtlose Integration zwischen interner Terminverwaltung (App) und öffentlicher Präsentation (Website), ohne doppelte Datenpflege.
+
+---
+
 ## Aktueller Fokus / Nächste sinnvolle Schritte
 1) ✅ Vision/Produktversprechen kurz niederschreiben und einpflegen (Phase 0) – **ERLEDIGT**
 2) ✅ Error-Logging System eingebaut (Phase 1.3) – **ERLEDIGT**
 3) ✅ Session-Status visuell verbessert (Phase 1.4) – **ERLEDIGT**
-4) 🔴 **KRITISCH:** 7 Tage Selbsttest (Offline/Online-Wechsel) durchführen (Phase 5)
-5) UX-Audit Sprache/Begriffe: Technik-Jargon entfernen, Termin/Kurs/Buchung konsistent (Phase 3.1/3.3)
-6) Optional: "Cache leeren" (Debug) hinzufügen (Phase 1.2)
-7) Doku ergänzen: Architekturüberblick, Backup-/Restore-Howto (Phase 7)
+4) ✅ Auto-Archivierung vergangener Termine beim App-Start (Phase 4.1) – **ERLEDIGT**
+5) 🔴 **KRITISCH:** 7 Tage Selbsttest (Offline/Online-Wechsel) durchführen (Phase 5)
+6) ✅ UX-Audit Sprache/Begriffe: Technik-Jargon entfernt (Phase 3.1/3.3) – **ERLEDIGT**
+7) ✅ "Cache leeren" (Debug) hinzugefügt (Phase 1.2) – **ERLEDIGT**
+8) Doku ergänzen: Architekturüberblick, Backup-/Restore-Howto (Phase 7)
+9) 📋 Website-Integration als v2-Feature geplant (Phase 8)

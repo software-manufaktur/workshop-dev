@@ -13,6 +13,12 @@
   const qsa = (s) => Array.from(document.querySelectorAll(s));
   const clone = (v) => (window.structuredClone ? window.structuredClone(v) : JSON.parse(JSON.stringify(v)));
   const fmtDate = (iso) => new Date(iso).toLocaleString([], { dateStyle: "short", timeStyle: "short" });
+  const formatDateTime = (iso) => {
+    if (!iso) return null;
+    const d = new Date(iso);
+    const p = (n) => String(n).padStart(2, "0");
+    return `${p(d.getDate())}.${p(d.getMonth() + 1)}.${d.getFullYear()} ${p(d.getHours())}:${p(d.getMinutes())}`;
+  };
   const toLocal = (d) => {
     const p = (n) => String(n).padStart(2, "0");
     return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`;
@@ -351,7 +357,35 @@
     });
   }
 
-  const storage = { getState, saveState, exportBackup, importBackup, listLocalBackups, addLocalSnapshot, queueSet, queueClear, queueLength, queueGetLatest };
+  /* ---------- Session Backup (iOS localStorage-Problem) ---------- */
+  async function saveSessionBackup(session) {
+    if (!session) return;
+    try {
+      await withStore("kv", "readwrite", (store) => store.put({ key: "session_backup", value: session }));
+    } catch (err) {
+      console.warn("Session backup failed", err);
+    }
+  }
+
+  async function restoreSessionBackup() {
+    try {
+      const backup = await withStore("kv", "readonly", (store) => store.get("session_backup"));
+      return backup?.value || null;
+    } catch (err) {
+      console.warn("Session restore failed", err);
+      return null;
+    }
+  }
+
+  async function clearSessionBackup() {
+    try {
+      await withStore("kv", "readwrite", (store) => store.delete("session_backup"));
+    } catch (err) {
+      console.warn("Session clear failed", err);
+    }
+  }
+
+  const storage = { getState, saveState, exportBackup, importBackup, listLocalBackups, addLocalSnapshot, queueSet, queueClear, queueLength, queueGetLatest, saveSessionBackup, restoreSessionBackup, clearSessionBackup };
   /* ---------- Supabase & Sync ---------- */
   async function handleAuthCallback() {
     if (!supabaseClient) return;
@@ -378,8 +412,36 @@
 
   async function loadSession() {
     if (!supabaseClient) return null;
+    
+    // Versuche Session von Supabase zu laden
     const { data } = await supabaseClient.auth.getSession();
-    authUser = data?.session?.user || null;
+    let session = data?.session;
+    
+    // Fallback: Session aus IndexedDB wiederherstellen (iOS localStorage-Problem)
+    if (!session) {
+      const backup = await storage.restoreSessionBackup();
+      if (backup && backup.expires_at && new Date(backup.expires_at * 1000) > new Date()) {
+        try {
+          const { error } = await supabaseClient.auth.setSession({
+            access_token: backup.access_token,
+            refresh_token: backup.refresh_token,
+          });
+          if (!error) {
+            session = backup;
+            if (isDebug) console.log("Session aus IndexedDB wiederhergestellt");
+          }
+        } catch (err) {
+          console.warn("Session-Wiederherstellung fehlgeschlagen", err);
+        }
+      }
+    }
+    
+    // Session-Backup speichern
+    if (session) {
+      await storage.saveSessionBackup(session);
+    }
+    
+    authUser = session?.user || null;
     if (authUser) await refreshOrgMembership();
     await updateUserInState(authUser);
     return authUser;
@@ -389,6 +451,14 @@
     if (!supabaseClient) return;
     supabaseClient.auth.onAuthStateChange(async (_event, session) => {
       authUser = session?.user || null;
+      
+      // Session-Backup aktualisieren oder löschen
+      if (session) {
+        await storage.saveSessionBackup(session);
+      } else {
+        await storage.clearSessionBackup();
+      }
+      
       await refreshOrgMembership();
       await updateUserInState(authUser);
       renderAuth();
@@ -483,6 +553,11 @@
 
   async function upsertBranding(orgId, branding) {
     if (!supabaseClient || !authUser || !orgId) throw new Error("Login erforderlich");
+    
+    // Session-Prüfung
+    const { data: { session } } = await supabaseClient.auth.getSession();
+    if (!session) throw new Error("Keine gültige Session - bitte erneut anmelden");
+    
     const payload = {
       p_org_id: orgId,
       p_app_name: branding.appName || null,
@@ -492,9 +567,17 @@
       p_terms_label: branding.termsLabel || null,
       p_bookings_label: branding.bookingsLabel || null,
     };
+    
+    // Versuch RPC-Call
     const { data, error } = await supabaseClient.rpc("set_org_settings", payload);
     if (!error && data) return normalizeBrandingRow(data);
-    if (error) console.warn("RPC set_org_settings fehlgeschlagen, fallback auf upsert", error);
+    
+    if (error) {
+      console.warn("RPC set_org_settings fehlgeschlagen, fallback auf upsert", error);
+      logError("upsertBranding RPC", error, { orgId, payload });
+    }
+    
+    // Fallback: Direkter Upsert
     const { data: upserted, error: upsertErr } = await supabaseClient
       .from("org_settings")
       .upsert(
@@ -511,7 +594,12 @@
       )
       .select()
       .maybeSingle();
-    if (upsertErr) throw upsertErr;
+      
+    if (upsertErr) {
+      logError("upsertBranding direct upsert", upsertErr, { orgId, branding });
+      throw new Error(`Speichern fehlgeschlagen: ${upsertErr.message || upsertErr.code || 'Unbekannter Fehler'}`);
+    }
+    
     return upserted ? normalizeBrandingRow(upserted) : null;
   }
 
@@ -1534,23 +1622,29 @@ Stefanie`;
 
   /* ---------- Debug ---------- */
   async function renderDebug() {
-    if (!isDebug) return;
     const panel = qs("#debugPanel");
     if (!panel) return;
+    
+    if (!isDebug) {
+      panel.classList.add("hidden");
+      return;
+    }
+    
     panel.classList.remove("hidden");
     const state = await storage.getState();
     const qLen = await storage.queueLength();
     const lines = [
-      `Storage OK: ${!!state.slots}`,
-      `Letzte Speicherung: ${state.meta.lastSaveAt || "-"}`,
-      `Letzter Sync: ${state.meta.lastSyncAt || "-"}`,
+      `<strong>Debug Mode</strong>`,
+      `Storage: ${!!state.slots ? '✓' : '✗'}`,
+      `Letzte Speicherung: ${formatDateTime(state.meta.lastSaveAt) || "-"}`,
+      `Letzter Sync: ${formatDateTime(state.meta.lastSyncAt) || "-"}`,
       `Queue: ${qLen}`,
-      `IDB Version: ${state.meta.idbVersion}`,
-      `Online: ${navigator.onLine}`,
-      `User: ${state.user?.email || "-"}`,
-      `Org: ${state.activeOrgId}`,
+      `IDB v${state.meta.idbVersion}`,
+      `${navigator.onLine ? '🟢' : '🔴'} ${navigator.onLine ? 'Online' : 'Offline'}`,
+      `User: ${state.user?.email || "(lokal)"}`,
+      `Org: ${state.activeOrgId || "(keine)"}`,
     ];
-    panel.textContent = lines.join(" | ");
+    panel.innerHTML = lines.join(" <span class='text-yellow-600'>•</span> ");
   }
 
   /* ---------- Status / Auth UI ---------- */
@@ -1656,7 +1750,8 @@ Stefanie`;
     }
     if (syncMeta) {
       const offline = navigator.onLine ? "" : " (offline - wird gespeichert sobald online)";
-      syncMeta.textContent = `Zuletzt aktualisiert: ${state.meta.lastSyncAt || "noch nie"}${offline}`;
+      const lastSync = formatDateTime(state.meta.lastSyncAt) || "noch nie";
+      syncMeta.textContent = `Zuletzt aktualisiert: ${lastSync}${offline}`;
     }
   }
 
@@ -1739,13 +1834,16 @@ Stefanie`;
       showToast("Branding gespeichert", "success");
       renderAll();
     } catch (err) {
-      showToast("Branding konnte nicht gespeichert werden: " + err.message, "error");
+      logError("brandingForm submit", err, { activeOrgId: state.activeOrgId, payload });
+      const msg = err.message || "Unbekannter Fehler";
+      showToast("Branding konnte nicht gespeichert werden: " + msg, "error");
     }
   });
 
   btnLogout?.addEventListener("click", async () => {
     try {
       await supabaseClient?.auth.signOut();
+      await storage.clearSessionBackup();
     } catch (err) {
       console.warn("Logout warning", err);
     }
@@ -1872,6 +1970,12 @@ END:VCALENDAR`;
   }
 
   async function init() {
+    // Storage Persist API für bessere Persistenz-Garantie (v.a. iOS)
+    if (navigator.storage && navigator.storage.persist) {
+      const isPersisted = await navigator.storage.persist();
+      if (isDebug) console.log("Storage Persistenz:", isPersisted ? "✓ Gewährt" : "✗ Verweigert");
+    }
+    
     applyBranding(DEFAULT_BRANDING);
     await storage.getState();
     await autoArchivePastEvents();
