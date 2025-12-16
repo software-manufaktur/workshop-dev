@@ -1957,6 +1957,7 @@ Stefanie`;
   }
 
   async function renderBrandingUI(branding = currentBranding) {
+    applyBranding(branding);
     const state = await storage.getState();
     const activeOrgId = resolveActiveOrgId(state);
     const stateWithActive = { ...state, activeOrgId };
