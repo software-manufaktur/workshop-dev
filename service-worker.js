@@ -1,4 +1,4 @@
-const CACHE_VERSION = "v2.2";
+const CACHE_VERSION = "v1.4.0";
 const STATIC_CACHE = `workshop-static-${CACHE_VERSION}`;
 const RUNTIME_CACHE = `workshop-runtime-${CACHE_VERSION}`;
 
@@ -6,15 +6,25 @@ const PRECACHE = [
   "./",
   "./index.html",
   "./app.js",
-  "./manifest.webmanifest",
-  "./static/logo.png",
-  "./static/bg.jpg",
-  "./static/icons/logo.png",
+  "./manifest.webmanifest"
 ];
 
 self.addEventListener("install", (event) => {
   event.waitUntil(
-    caches.open(STATIC_CACHE).then((cache) => cache.addAll(PRECACHE))
+    caches.open(STATIC_CACHE)
+      .then((cache) => {
+        // Einzeln cachen mit Fehlerbehandlung
+        return Promise.allSettled(
+          PRECACHE.map(url => 
+            cache.add(url).catch(err => {
+              console.warn('Cache failed for:', url);
+              return null;
+            })
+          )
+        );
+      })
+      .then(() => self.skipWaiting())
+      .catch(err => console.error('Install failed:', err))
   );
 });
 
