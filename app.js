@@ -132,8 +132,7 @@
         logoEl.src = currentBranding.logoUrl;
         logoEl.classList.remove("hidden");
       } else {
-        logoEl.src = "static/logo.png";
-        logoEl.classList.remove("hidden");
+        logoEl.classList.add("hidden");
       }
     }
     const metaTheme = document.querySelector("meta[name='theme-color']");
