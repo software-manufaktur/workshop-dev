@@ -1,0 +1,216 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <meta name="robots" content="noindex,nofollow" />
+  <title>TEMPIO – Rechtliches</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='20' fill='%23222'/%3E%3Crect x='15' y='25' width='70' height='60' rx='5' fill='%23fff'/%3E%3Crect x='15' y='25' width='70' height='15' rx='5' fill='%23FF7043'/%3E%3Ccircle cx='35' cy='55' r='4' fill='%23222'/%3E%3Ccircle cx='50' cy='55' r='4' fill='%23222'/%3E%3Ccircle cx='65' cy='55' r='4' fill='%23222'/%3E%3Ccircle cx='35' cy='70' r='4' fill='%23222'/%3E%3Ccircle cx='50' cy='70' r='4' fill='%23FF7043'/%3E%3Ccircle cx='65' cy='70' r='4' fill='%23222'/%3E%3C/svg%3E">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            brand: '#A88C5D',
+            dark: '#1F2937',
+            soft: '#E5E7EB',
+            mid: '#D1D5DB'
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    :root {
+      --primary: #222;
+      --accent: #FF7043;
+    }
+    .text-primary {
+      color: var(--primary);
+    }
+  </style>
+</head>
+<body class="bg-gray-50 text-slate-900">
+  <header class="sticky top-0 z-10 bg-white border-b border-gray-200 px-4 py-4">
+    <div class="max-w-4xl mx-auto">
+      <h1 class="text-xl font-bold text-primary mb-3">TEMPIO – Rechtliches</h1>
+      <div class="flex flex-wrap gap-2">
+        <button id="tab-imprint" aria-pressed="true" type="button" class="px-4 py-2 rounded-xl bg-dark text-white text-sm font-semibold">Impressum</button>
+        <button id="tab-privacy" aria-pressed="false" type="button" class="px-4 py-2 rounded-xl bg-soft hover:bg-mid text-dark text-sm font-semibold">Datenschutz</button>
+        <button id="tab-en" aria-pressed="false" type="button" class="px-4 py-2 rounded-xl bg-soft hover:bg-mid text-dark text-sm font-semibold">English</button>
+      </div>
+    </div>
+  </header>
+
+  <main class="max-w-4xl mx-auto px-4 py-6">
+    <section id="imprint" class="bg-white border border-gray-200 rounded-2xl p-6 shadow-sm">
+      <h2 class="text-2xl font-bold text-primary mb-2">Impressum</h2>
+      <p class="text-sm text-slate-500 mb-6">Angaben gemäß § 5 TMG</p>
+      <div class="space-y-4 text-slate-700">
+        <p>
+          <strong class="text-slate-900">Software Manufaktur</strong><br />
+          Inhaber: Roy Heppner<br />
+          Wilhelm-Pieck-Straße 6<br />
+          04651 Bad Lausick<br />
+          Deutschland
+        </p>
+        <p>
+          <strong>E-Mail:</strong> <a href="mailto:kontakt@diesoftwaremanufaktur.de" class="text-primary underline hover:opacity-80">kontakt@diesoftwaremanufaktur.de</a>
+        </p>
+        <div class="border-t border-gray-200 pt-4">
+          <p class="text-sm text-slate-600">
+            <strong>Verantwortlich für den Inhalt nach § 55 Abs. 2 RStV:</strong><br />
+            Roy Heppner, Wilhelm-Pieck-Straße 6, 04651 Bad Lausick
+          </p>
+        </div>
+        <div class="bg-blue-50 border border-blue-200 rounded-xl p-4">
+          <p class="text-sm text-slate-700"><strong>👉 Hinweis:</strong> TEMPIO ist ein Produkt der Software Manufaktur.</p>
+        </div>
+      </div>
+    </section>
+
+    <section id="privacy" class="bg-white border border-gray-200 rounded-2xl p-6 shadow-sm" hidden>
+      <h2 class="text-2xl font-bold text-primary mb-6">Datenschutzerklärung</h2>
+      <div class="space-y-6 text-slate-700">
+        <div>
+          <h3 class="text-lg font-semibold text-slate-900 mb-2">1. Verantwortlicher</h3>
+          <p class="mb-3">
+            Software Manufaktur (Inhaber: Roy Heppner), Wilhelm-Pieck-Straße 6, 04651 Bad Lausick, Deutschland<br />
+            E-Mail: <a href="mailto:kontakt@diesoftwaremanufaktur.de" class="text-primary underline hover:opacity-80">kontakt@diesoftwaremanufaktur.de</a>
+          </p>
+        </div>
+
+        <div>
+          <h3 class="text-lg font-semibold text-slate-900 mb-2">2. Allgemeines</h3>
+          <p>
+            TEMPIO ist als Offline-first Progressive Web App (PWA) konzipiert. Ein Großteil der Datenverarbeitung erfolgt lokal
+            auf dem Endgerät der Nutzerinnen und Nutzer.
+          </p>
+        </div>
+
+        <div>
+          <h3 class="text-lg font-semibold text-slate-900 mb-2">3. Welche Daten werden verarbeitet?</h3>
+          <ul class="list-disc list-inside space-y-2 ml-2">
+            <li><strong>Nutzerkonto (Supabase Auth):</strong> E-Mail-Adresse, technische User-ID, Anmeldezeitpunkte</li>
+            <li><strong>Anwendungsdaten:</strong> Termine/Kurse, Buchungen/Teilnehmer, Kapazitäten, Notizen, Backups</li>
+            <li><strong>Technische Daten:</strong> IP-Adresse und Server-Logs im Rahmen des Betriebs (durch den Cloud-Dienst)</li>
+          </ul>
+          <p class="mt-3"><strong>Rechtsgrundlage:</strong> Art. 6 Abs. 1 lit. b DSGVO (Vertrag/Nutzung der App).</p>
+        </div>
+
+        <div>
+          <h3 class="text-lg font-semibold text-slate-900 mb-2">4. Cloud-Dienstleister (Supabase)</h3>
+          <p class="mb-2">
+            Für Authentifizierung und optionale Cloud-Sicherung nutzen wir Supabase Inc., 970 Toa Payoh North, #07-04, Singapore.
+            Datenverarbeitung erfolgt auf Servern innerhalb der EU (Region Frankfurt). Es besteht ein Vertrag zur Auftragsverarbeitung gemäß Art. 28 DSGVO.
+          </p>
+        </div>
+
+        <div>
+          <h3 class="text-lg font-semibold text-slate-900 mb-2">5. Cookies & Tracking</h3>
+          <p>
+            TEMPIO nutzt keine Tracking- oder Werbe-Cookies und keine Analyse-Tools. Technisch notwendige Session-Informationen können verwendet werden.
+          </p>
+        </div>
+
+        <div>
+          <h3 class="text-lg font-semibold text-slate-900 mb-2">6. Ihre Rechte</h3>
+          <ul class="list-disc list-inside space-y-1 ml-2">
+            <li>Auskunft (Art. 15 DSGVO)</li>
+            <li>Berichtigung (Art. 16 DSGVO)</li>
+            <li>Löschung (Art. 17 DSGVO)</li>
+            <li>Einschränkung (Art. 18 DSGVO)</li>
+            <li>Datenübertragbarkeit (Art. 20 DSGVO)</li>
+            <li>Widerruf von Einwilligungen (Art. 7 Abs. 3 DSGVO)</li>
+            <li>Beschwerde bei der Datenschutzaufsichtsbehörde</li>
+          </ul>
+        </div>
+
+        <div>
+          <h3 class="text-lg font-semibold text-slate-900 mb-2">7. Verantwortung der Nutzer</h3>
+          <p>
+            Nutzerinnen und Nutzer verarbeiten ggf. personenbezogene Daten eigener Kundinnen und Kunden. Für diese Verarbeitung sind sie selbst verantwortlich.
+          </p>
+        </div>
+
+        <p class="text-sm text-slate-500 mt-8 pt-4 border-t border-gray-200"><strong>Stand:</strong> Dezember 2025</p>
+      </div>
+    </section>
+
+    <section id="en" class="bg-white border border-gray-200 rounded-2xl p-6 shadow-sm" hidden>
+      <h2 class="text-2xl font-bold text-primary mb-2">Privacy & Imprint (English)</h2>
+      <p class="text-sm text-slate-500 mb-6">For convenience only. The German version is authoritative.</p>
+      <div class="space-y-6 text-slate-700">
+        <div>
+          <h3 class="text-lg font-semibold text-slate-900 mb-2">Controller</h3>
+          <p>
+            Software Manufaktur (Owner: Roy Heppner)<br />
+            Wilhelm-Pieck-Straße 6, 04651 Bad Lausick, Germany<br />
+            Email: <a href="mailto:kontakt@diesoftwaremanufaktur.de" class="text-primary underline hover:opacity-80">kontakt@diesoftwaremanufaktur.de</a>
+          </p>
+        </div>
+
+        <div>
+          <h3 class="text-lg font-semibold text-slate-900 mb-2">About TEMPIO</h3>
+          <p>
+            TEMPIO is an offline-first Progressive Web App. Most processing happens locally on the user's device.
+          </p>
+        </div>
+
+        <div>
+          <h3 class="text-lg font-semibold text-slate-900 mb-2">Data processed</h3>
+          <ul class="list-disc list-inside space-y-2 ml-2">
+            <li>Authentication: email address, technical user ID, sign-in timestamps</li>
+            <li>App content: appointments/courses, bookings/participants, capacities, notes, backups</li>
+            <li>Technical logs: IP address and server logs as required for operation (by the cloud provider)</li>
+          </ul>
+          <p class="mt-3"><strong>Legal basis:</strong> Art. 6(1)(b) GDPR (contract / use of the app).</p>
+        </div>
+
+        <div>
+          <h3 class="text-lg font-semibold text-slate-900 mb-2">Cloud provider (Supabase)</h3>
+          <p>
+            We use Supabase Inc. for authentication and optional cloud backup/sync. Processing is hosted in the EU (Frankfurt region).
+            A data processing agreement (Art. 28 GDPR) applies.
+          </p>
+        </div>
+
+        <div>
+          <h3 class="text-lg font-semibold text-slate-900 mb-2">No analytics</h3>
+          <p>No tracking, advertising cookies, or analytics tools are used.</p>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    const tabs = [
+      ["tab-imprint", "imprint"],
+      ["tab-privacy", "privacy"],
+      ["tab-en", "en"],
+    ];
+    function show(id){
+      for (const [t,s] of tabs) {
+        const section = document.getElementById(s);
+        const button = document.getElementById(t);
+        if (s === id) {
+          section.hidden = false;
+          button.setAttribute("aria-pressed", "true");
+          button.classList.remove("bg-soft", "hover:bg-mid", "text-dark");
+          button.classList.add("bg-dark", "text-white");
+        } else {
+          section.hidden = true;
+          button.setAttribute("aria-pressed", "false");
+          button.classList.remove("bg-dark", "text-white");
+          button.classList.add("bg-soft", "hover:bg-mid", "text-dark");
+        }
+      }
+      window.scrollTo({top:0, behavior:"smooth"});
+    }
+    document.getElementById("tab-imprint").addEventListener("click", () => show("imprint"));
+    document.getElementById("tab-privacy").addEventListener("click", () => show("privacy"));
+    document.getElementById("tab-en").addEventListener("click", () => show("en"));
+  </script>
+</body>
+</html>
