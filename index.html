@@ -128,13 +128,13 @@
       </div>
       
       <!-- Auth Status & Actions -->
-      <div class="flex items-center gap-3 ml-auto">
-        <span id="authStatus" class="text-slate-700">Nicht angemeldet</span>
-        <form id="authForm" class="flex gap-2 items-center">
-          <input id="authEmail" type="email" required class="px-3 py-2 rounded-xl border border-gray-400/60 text-sm" placeholder="E-Mail für Magic Link">
-          <button type="submit" class="px-3 py-2 rounded-xl bg-emerald-600 text-white text-sm hover:bg-emerald-700">Anmelden</button>
+      <div class="flex flex-wrap items-center gap-2 sm:gap-3 ml-auto">
+        <span id="authStatus" class="text-slate-700 text-sm">Nicht angemeldet</span>
+        <form id="authForm" class="flex gap-2 items-center w-full sm:w-auto">
+          <input id="authEmail" type="email" required class="px-3 py-2 rounded-xl border border-gray-400/60 text-sm flex-1 sm:flex-initial sm:w-[200px]" placeholder="E-Mail">
+          <button type="submit" class="px-3 py-2 rounded-xl bg-emerald-600 text-white text-sm hover:bg-emerald-700 whitespace-nowrap">Anmelden</button>
         </form>
-        <button id="btnLogout" type="button" class="px-3 py-2 rounded-xl bg-rose-500 hover:bg-rose-600 text-white text-sm hidden">Abmelden</button>
+        <button id="btnLogout" type="button" class="px-3 py-2 rounded-xl bg-rose-500 hover:bg-rose-600 text-white text-sm hidden whitespace-nowrap">Abmelden</button>
       </div>
     </div>
     
@@ -430,7 +430,7 @@
   </div>
 
   <!-- Toast -->
-  <div id="toast" class="fixed bottom-4 left-1/2 -translate-x-1/2 bg-white/90 backdrop-blur border border-gray-200 shadow-xl rounded-xl px-4 py-3 hidden">
+  <div id="toast" class="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-white/95 backdrop-blur-sm border-2 border-gray-300 shadow-2xl rounded-2xl px-6 py-4 hidden z-[100] min-w-[300px] text-center">
     <span id="toastMsg" class="text-sm"></span>
     <a id="toastLink" href="#" target="_blank" class="ml-3 underline text-primary">Oeffnen</a>
   </div>

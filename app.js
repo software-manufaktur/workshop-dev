@@ -291,7 +291,7 @@
 
   async function importBackup(json) {
     const parsed = typeof json === "string" ? JSON.parse(json) : json;
-    if (!parsed || !validateStateShape(parsed.state || parsed)) throw new Error("Backup schema invalid");
+    if (!parsed || !validateStateShape(parsed.state || parsed)) throw new Error("Backup-Format ungültig");
     const nextState = parsed.state || parsed;
     const merged = { ...clone(stateDefaults), ...nextState };
     await saveState(merged);
@@ -401,7 +401,7 @@
   }
 
   async function sendMagicLink(email) {
-    if (!supabaseClient) throw new Error("Supabase nicht konfiguriert");
+    if (!supabaseClient) throw new Error("Cloud-Verbindung nicht konfiguriert");
     const redirectTo = `${location.origin}${location.pathname}`;
     const { error } = await supabaseClient.auth.signInWithOtp({
       email,
@@ -678,10 +678,10 @@
 
   async function restoreServerBackup(id) {
     const state = await storage.getState();
-    if (!isCloudReady(state)) throw new Error("Nicht eingeloggt");
+    if (!isCloudReady(state)) throw new Error("Bitte melden Sie sich an");
     const { data, error } = await supabaseClient.from("backups").select("*").eq("id", id).maybeSingle();
     if (error) throw error;
-    if (!data) throw new Error("Backup nicht gefunden");
+    if (!data) throw new Error("Sicherung wurde nicht gefunden");
     await storage.importBackup({ state: data.snapshot });
     memoryState = await storage.getState();
     renderAll();
@@ -1428,7 +1428,7 @@ Stefanie`;
       const text = await file.text();
       const parsed = JSON.parse(text);
       if (!parsed || (!parsed.state && (!Array.isArray(parsed.slots) || !Array.isArray(parsed.bookings)))) {
-        throw new Error("Format ungueltig");
+        throw new Error("Das Backup-Format ist ungültig");
       }
       const state = parsed.state || parsed;
       ctx.importPreview = { fileName: file.name, slots: state.slots?.length || 0, bookings: state.bookings?.length || 0, payload: state };
