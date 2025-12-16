@@ -630,34 +630,38 @@
     return merged;
   }
 
-  async function upsertBranding(orgId, branding) {
-    if (!supabaseClient || !authUser || !orgId) throw new Error("Login erforderlich");
-    
-    // Session-Prüfung
-    const { data: { session } } = await supabaseClient.auth.getSession();
-    if (!session) throw new Error("Keine gültige Session - bitte erneut anmelden");
-    
-    const payload = {
-      p_org_id: orgId,
-      p_app_name: branding.appName || null,
-      p_primary_color: branding.primaryColor || null,
-      p_accent_color: branding.accentColor || null,
-      p_logo_url: branding.logoUrl || null,
-      p_terms_label: branding.termsLabel || null,
-      p_bookings_label: branding.bookingsLabel || null,
-      p_categories: branding.categories ? JSON.stringify(branding.categories) : null,
-    };
-    
-    // Versuch RPC-Call
+  
+async function upsertBranding(orgId, branding) {
+  if (!supabaseClient || !authUser || !orgId) throw new Error("Login erforderlich");
+
+  const ensureSession = async () => {
+    const { data } = await supabaseClient.auth.getSession();
+    if (data?.session) return data.session;
+    const { data: refreshed, error: refreshErr } = await supabaseClient.auth.refreshSession();
+    if (refreshErr || !refreshed?.session) throw new Error("Keine g?ltige Session - bitte neu anmelden");
+    return refreshed.session;
+  };
+
+  const payload = {
+    p_org_id: orgId,
+    p_app_name: branding.appName || null,
+    p_primary_color: branding.primaryColor || null,
+    p_accent_color: branding.accentColor || null,
+    p_logo_url: branding.logoUrl || null,
+    p_terms_label: branding.termsLabel || null,
+    p_bookings_label: branding.bookingsLabel || null,
+    p_categories: branding.categories ? JSON.stringify(branding.categories) : null,
+  };
+
+  const doUpsert = async () => {
     const { data, error } = await supabaseClient.rpc("set_org_settings", payload);
     if (!error && data) return normalizeBrandingRow(data);
-    
+
     if (error) {
       console.warn("RPC set_org_settings fehlgeschlagen, fallback auf upsert", error);
       logError("upsertBranding RPC", error, { orgId, payload });
     }
-    
-    // Fallback: Direkter Upsert
+
     const { data: upserted, error: upsertErr } = await supabaseClient
       .from("org_settings")
       .upsert(
@@ -675,16 +679,33 @@
       )
       .select()
       .maybeSingle();
-      
+
     if (upsertErr) {
       logError("upsertBranding direct upsert", upsertErr, { orgId, branding });
-      throw new Error(`Speichern fehlgeschlagen: ${upsertErr.message || upsertErr.code || 'Unbekannter Fehler'}`);
+      throw new Error(`Speichern fehlgeschlagen: ${upsertErr.message || upsertErr.code || "Unbekannter Fehler"}`);
     }
-    
-    return upserted ? normalizeBrandingRow(upserted) : null;
-  }
 
-  async function pullLatestFromServer() {
+    return upserted ? normalizeBrandingRow(upserted) : null;
+  };
+
+  const isAuthError = (err) => {
+    const msg = (err?.message || "").toLowerCase();
+    return [401, 403].includes(err?.status) || msg.includes("jwt") || msg.includes("auth") || msg.includes("session");
+  };
+
+  try {
+    await ensureSession();
+    return await doUpsert();
+  } catch (err) {
+    if (isAuthError(err)) {
+      await ensureSession();
+      return await doUpsert();
+    }
+    throw err;
+  }
+}
+
+async function pullLatestFromServer() {
     const state = await storage.getState();
     if (!isCloudReady(state)) return;
     await loadBrandingForOrg(state.activeOrgId);
