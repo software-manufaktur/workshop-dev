@@ -19,6 +19,17 @@
     const p = (n) => String(n).padStart(2, "0");
     return `${p(d.getDate())}.${p(d.getMonth() + 1)}.${d.getFullYear()} ${p(d.getHours())}:${p(d.getMinutes())}`;
   };
+  const normalizeHexColor = (val) => {
+    if (!val) return null;
+    const raw = String(val).trim().replace(/^#/, "");
+    if (/^[0-9a-fA-F]{3}$/.test(raw)) {
+      return `#${raw.split("").map((c) => c + c).join("")}`;
+    }
+    if (/^[0-9a-fA-F]{6}$/.test(raw)) {
+      return `#${raw}`;
+    }
+    return null;
+  };
   const toLocal = (d) => {
     const p = (n) => String(n).padStart(2, "0");
     return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`;
@@ -2019,10 +2030,16 @@ Stefanie`;
         showToast("Nur Owner/Admin dürfen Branding ändern", "error");
         return;
       }
+      const primary = normalizeHexColor(brandPrimaryInput?.value) || normalizeHexColor(DEFAULT_BRANDING.primaryColor);
+      const accent = normalizeHexColor(brandAccentInput?.value) || normalizeHexColor(DEFAULT_BRANDING.accentColor);
+      if (!primary || !accent) {
+        showToast("Ungültige Farbe. Bitte Hex (#RRGGBB) verwenden.", "error");
+        return;
+      }
       const payload = {
         appName: (brandAppNameInput?.value || "").trim() || DEFAULT_BRANDING.appName,
-        primaryColor: (brandPrimaryInput?.value || "").trim() || DEFAULT_BRANDING.primaryColor,
-        accentColor: (brandAccentInput?.value || "").trim() || DEFAULT_BRANDING.accentColor,
+        primaryColor: primary,
+        accentColor: accent,
         termsLabel: (brandTermsInput?.value || "").trim() || DEFAULT_BRANDING.termsLabel,
         bookingsLabel: (brandBookingsInput?.value || "").trim() || DEFAULT_BRANDING.bookingsLabel,
         logoUrl: (brandLogoInput?.value || "").trim() || null,
