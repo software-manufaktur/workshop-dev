@@ -2058,7 +2058,7 @@ Stefanie`;
         const merged = { ...payload, ...(saved || {}) };
         await saveBrandingCache(activeOrgId, { ...DEFAULT_BRANDING, ...merged });
         applyBranding(merged);
-        renderBrandingUI(merged);
+        // renderBrandingUI() nach Speichern entfernt - würde Input-Felder überschreiben und Fokusprobleme verursachen
         showToast("Branding gespeichert", "success");
         renderAll();
       } catch (err) {
