@@ -441,13 +441,13 @@
       const backup = await storage.restoreSessionBackup();
       if (backup && backup.expires_at && new Date(backup.expires_at * 1000) > new Date()) {
         try {
-          const { error } = await supabaseClient.auth.setSession({
+          const { data: setData, error } = await supabaseClient.auth.setSession({
             access_token: backup.access_token,
             refresh_token: backup.refresh_token,
           });
-          if (!error) {
-            session = backup;
-            if (isDebug) console.log("Session aus IndexedDB wiederhergestellt");
+          if (!error && setData?.session) {
+            session = setData.session;
+            if (isDebug) console.log("✅ Session aus IndexedDB wiederhergestellt");
           }
         } catch (err) {
           console.warn("Session-Wiederherstellung fehlgeschlagen", err);
@@ -455,27 +455,37 @@
       }
     }
     
-    // Session-Backup speichern
+    // Session-Backup IMMER speichern wenn vorhanden
     if (session) {
       await storage.saveSessionBackup(session);
+      if (isDebug) console.log("✅ Session in IndexedDB gespeichert", session.expires_at);
     }
     
     authUser = session?.user || null;
-    if (authUser) await refreshOrgMembership();
+    if (authUser) {
+      if (isDebug) console.log("✅ User authenticated:", authUser.email);
+      await refreshOrgMembership();
+    } else {
+      if (isDebug) console.log("⚪ No active session");
+    }
     await updateUserInState(authUser);
     return authUser;
   }
 
   function subscribeAuth() {
     if (!supabaseClient) return;
-    supabaseClient.auth.onAuthStateChange(async (_event, session) => {
+    supabaseClient.auth.onAuthStateChange(async (event, session) => {
+      if (isDebug) console.log("🔐 Auth State Change:", event, session?.user?.email);
+      
       authUser = session?.user || null;
       
       // Session-Backup aktualisieren oder löschen
       if (session) {
         await storage.saveSessionBackup(session);
+        if (isDebug) console.log("✅ Session gespeichert:", session.expires_at);
       } else {
         await storage.clearSessionBackup();
+        if (isDebug) console.log("🗑️ Session gelöscht");
       }
       
       await refreshOrgMembership();
@@ -502,8 +512,11 @@
     if (!orgs.length && authUser?.email) {
       console.log("⚠️ User has no organization - creating personal org...");
       try {
+        // Generiere einen eindeutigen Namen (Email + Timestamp)
+        const uniqueName = `${authUser.email} (${new Date().getTime().toString().slice(-6)})`;
+        
         const { data: newOrg, error: createError } = await supabaseClient.rpc('create_org', {
-          p_name: authUser.email
+          p_name: uniqueName
         });
         
         if (createError) {
