@@ -1951,38 +1951,41 @@ Stefanie`;
     }
   });
 
-  brandingForm?.addEventListener("submit", async (e) => {
-    e.preventDefault();
-    const state = await storage.getState();
-    if (!state.activeOrgId) {
-      showToast("Keine Organisation ausgewaehlt", "error");
-      return;
-    }
-    if (!canEditBranding(state)) {
-      showToast("Nur Owner/Admin duerfen Branding aendern", "error");
-      return;
-    }
-    const payload = {
-      appName: (brandAppNameInput?.value || "").trim() || DEFAULT_BRANDING.appName,
-      primaryColor: (brandPrimaryInput?.value || "").trim() || DEFAULT_BRANDING.primaryColor,
-      accentColor: (brandAccentInput?.value || "").trim() || DEFAULT_BRANDING.accentColor,
-      termsLabel: (brandTermsInput?.value || "").trim() || DEFAULT_BRANDING.termsLabel,
-      bookingsLabel: (brandBookingsInput?.value || "").trim() || DEFAULT_BRANDING.bookingsLabel,
-      logoUrl: (brandLogoInput?.value || "").trim() || null,
-      categories: (qs("#brandCategories")?.value || "").split(",").map(c => c.trim()).filter(Boolean),
-    };
-    try {
-      const saved = await upsertBranding(state.activeOrgId, payload);
-      const merged = { ...payload, ...(saved || {}) };
-      await saveBrandingCache(state.activeOrgId, { ...DEFAULT_BRANDING, ...merged });
-      applyBranding(merged);
-      renderBrandingUI(merged);
-      showToast("Branding gespeichert", "success");
-      renderAll();
-    } catch (err) {
-      logError("brandingForm submit", err, { activeOrgId: state.activeOrgId, payload });
-      const msg = err.message || "Unbekannter Fehler";
-      showToast("Branding konnte nicht gespeichert werden: " + msg, "error");
+  // Design-Speichern mit Event Delegation (funktioniert auch nach Re-render)
+  document.addEventListener("submit", async (e) => {
+    if (e.target && e.target.id === "brandingForm") {
+      e.preventDefault();
+      const state = await storage.getState();
+      if (!state.activeOrgId) {
+        showToast("Keine Organisation ausgewählt", "error");
+        return;
+      }
+      if (!canEditBranding(state)) {
+        showToast("Nur Owner/Admin dürfen Branding ändern", "error");
+        return;
+      }
+      const payload = {
+        appName: (brandAppNameInput?.value || "").trim() || DEFAULT_BRANDING.appName,
+        primaryColor: (brandPrimaryInput?.value || "").trim() || DEFAULT_BRANDING.primaryColor,
+        accentColor: (brandAccentInput?.value || "").trim() || DEFAULT_BRANDING.accentColor,
+        termsLabel: (brandTermsInput?.value || "").trim() || DEFAULT_BRANDING.termsLabel,
+        bookingsLabel: (brandBookingsInput?.value || "").trim() || DEFAULT_BRANDING.bookingsLabel,
+        logoUrl: (brandLogoInput?.value || "").trim() || null,
+        categories: (qs("#brandCategories")?.value || "").split(",").map(c => c.trim()).filter(Boolean),
+      };
+      try {
+        const saved = await upsertBranding(state.activeOrgId, payload);
+        const merged = { ...payload, ...(saved || {}) };
+        await saveBrandingCache(state.activeOrgId, { ...DEFAULT_BRANDING, ...merged });
+        applyBranding(merged);
+        renderBrandingUI(merged);
+        showToast("Branding gespeichert", "success");
+        renderAll();
+      } catch (err) {
+        logError("brandingForm submit", err, { activeOrgId: state.activeOrgId, payload });
+        const msg = err.message || "Unbekannter Fehler";
+        showToast("Branding konnte nicht gespeichert werden: " + msg, "error");
+      }
     }
   });
 
@@ -2094,71 +2097,77 @@ Stefanie`;
     if (form) form.classList.add("hidden");
   });
   
-  qs("#formRenameOrg")?.addEventListener("submit", async (e) => {
-    e.preventDefault();
-    const newName = qs("#inputOrgNewName")?.value?.trim();
-    if (!newName || !state.activeOrgId) return;
-    
-    try {
-      const { data, error } = await supabaseClient.rpc('rename_org', {
-        p_org_id: state.activeOrgId,
-        p_new_name: newName
-      });
-      
-      if (error) throw error;
-      
-      // Update local state
-      await updateState(draft => {
-        const org = draft.orgs.find(o => o.id === state.activeOrgId);
-        if (org) org.name = newName;
-      });
-      
-      // Update UI
-      const teamSelect = qs("#teamSelect");
-      if (teamSelect) {
-        const option = teamSelect.querySelector(`option[value="${state.activeOrgId}"]`);
-        if (option) option.textContent = newName;
-      }
-      
-      qs("#formRenameOrg")?.classList.add("hidden");
-      updateOrgInfo();
-      showToast("Organisation umbenannt", "success");
-    } catch (err) {
-      console.error("Rename org error:", err);
-      showToast("Fehler beim Umbenennen: " + err.message, "error");
-    }
-  });
   
-  // Create new organization
-  qs("#formCreateOrg")?.addEventListener("submit", async (e) => {
-    e.preventDefault();
-    const orgName = qs("#inputOrgName")?.value?.trim();
-    if (!orgName) return;
+  // Organisation umbenennen + erstellen mit Event Delegation
+  document.addEventListener("submit", async (e) => {
+    // Rename Organization
+    if (e.target && e.target.id === "formRenameOrg") {
+      e.preventDefault();
+      const newName = qs("#inputOrgNewName")?.value?.trim();
+      const state = await storage.getState();
+      if (!newName || !state.activeOrgId) return;
+      
+      try {
+        const { data, error } = await supabaseClient.rpc('rename_org', {
+          p_org_id: state.activeOrgId,
+          p_new_name: newName
+        });
+        
+        if (error) throw error;
+        
+        // Update local state
+        await updateState(draft => {
+          const org = draft.orgs.find(o => o.id === state.activeOrgId);
+          if (org) org.name = newName;
+        });
+        
+        // Update UI
+        const teamSelect = qs("#teamSelect");
+        if (teamSelect) {
+          const option = teamSelect.querySelector(`option[value="${state.activeOrgId}"]`);
+          if (option) option.textContent = newName;
+        }
+        
+        qs("#formRenameOrg")?.classList.add("hidden");
+        updateOrgInfo();
+        showToast("Organisation umbenannt", "success");
+      } catch (err) {
+        console.error("Rename org error:", err);
+        showToast("Fehler beim Umbenennen: " + err.message, "error");
+      }
+    }
     
-    try {
-      const { data, error } = await supabaseClient.rpc('create_org', {
-        p_name: orgName
-      });
+    // Create new organization
+    if (e.target && e.target.id === "formCreateOrg") {
+      e.preventDefault();
+      const orgName = qs("#inputOrgName")?.value?.trim();
+      if (!orgName) return;
       
-      if (error) throw error;
-      
-      // Refresh org membership
-      const orgs = await refreshOrgMembership();
-      
-      // Switch to new org
-      await updateState(draft => {
-        draft.activeOrgId = data.id;
-      }, { skipSnapshot: true });
-      
-      await loadBrandingForOrg(data.id);
-      renderAll();
-      renderAuth();
-      
-      qs("#inputOrgName").value = "";
-      showToast("Organisation erstellt", "success");
-    } catch (err) {
-      console.error("Create org error:", err);
-      showToast("Fehler beim Erstellen: " + err.message, "error");
+      try {
+        const { data, error } = await supabaseClient.rpc('create_org', {
+          p_name: orgName
+        });
+        
+        if (error) throw error;
+        
+        // Refresh org membership
+        const orgs = await refreshOrgMembership();
+        
+        // Switch to new org
+        await updateState(draft => {
+          draft.activeOrgId = data.id;
+        }, { skipSnapshot: true });
+        
+        await loadBrandingForOrg(data.id);
+        renderAll();
+        renderAuth();
+        
+        qs("#inputOrgName").value = "";
+        showToast("Organisation erstellt", "success");
+      } catch (err) {
+        console.error("Create org error:", err);
+        showToast("Fehler beim Erstellen: " + err.message, "error");
+      }
     }
   });
   
@@ -2380,6 +2389,7 @@ END:VCALENDAR`;
     renderAll();
     setupServiceWorkerUpdate();
     renderStatus();
+    renderAuth(); // Initial auth status rendern
     
     // Event-Listener für Buttons (muss nach DOM-Load sein)
     setupSettingsListeners();
