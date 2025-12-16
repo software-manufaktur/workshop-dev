@@ -917,7 +917,7 @@
               <div class="text-sm text-slate-500">${statusBadge(status, left)}</div>
               <div class="font-semibold text-[20px] sm:text-base leading-snug break-words" style="color:var(--primary)">${s.title}</div>
               <div class="text-sm">${fmtDate(s.starts_at)} - ${fmtDate(s.ends_at)}</div>
-              <div class="text-sm mt-1">Kapazitaet: ${s.capacity} - Gebucht: ${booked} - Frei: ${left}</div>
+              <div class="text-sm mt-1">Kapazität: ${s.capacity} - Gebucht: ${booked} - Frei: ${left}</div>
               <div class="h-2 mt-2 bg-gray-100 rounded-full overflow-hidden"><div class="h-2 ${barColor}" style="width:${bar}%"></div></div>
               ${renderBookingsMini(s.id, state)}
             </div>
@@ -1071,7 +1071,7 @@
         archived: false,
       };
       if (!slot.capacity || !stEl?.value || !enEl?.value) {
-        showToast("Bitte Start, Ende und Kapazitaet angeben.", "error");
+        showToast("Bitte Start, Ende und Kapazität angeben.", "error");
         return;
       }
       try {
@@ -1160,7 +1160,7 @@
         draft.bookings = draft.bookings.filter((b) => b.slotId !== pendingDeleteSlotId);
         draft.meta.lastSaveAt = new Date().toISOString();
       });
-      showToast("Termin geloescht", "success");
+      showToast("Termin gelöscht", "success");
     } catch (err) {
       showToast("Loeschen fehlgeschlagen: " + err.message, "error");
     }
@@ -1253,7 +1253,7 @@
       const txt = `${salutation} ${b.name},
 
 hiermit bestaetige ich ${youDat} die Teilnahme am ${when}
-fuer ${b.count} Person${plural ? "en" : ""}.
+für ${b.count} Person${plural ? "en" : ""}.
 
 Ich freue mich auf ${youAcc} und wuensche ${youDat} bis dahin alles Gute.
 
@@ -1281,7 +1281,7 @@ Stefanie`;
     const countEl = qs("#bk_count");
     const salEl = qs("#bk_salutation");
     if (!nameEl || !phoneEl || !countEl) {
-      showToast("Formular unvollstaendig.", "error");
+      showToast("Formular unvollständig.", "error");
       return;
     }
     const booking = {
@@ -1309,7 +1309,7 @@ Stefanie`;
     const bookedExceptThis = editing ? already - Number(old.count || 0) : already;
     const left = slot.capacity - bookedExceptThis;
     if (booking.count > left) {
-      showToast(`Es sind nur noch ${left} Plaetze frei.`, "error");
+      showToast(`Es sind nur noch ${left} Plätze frei.`, "error");
       return;
     }
     try {
@@ -1567,24 +1567,28 @@ Stefanie`;
   });
   
   /* ---------- Settings ---------- */
-  qs("#btnSettings")?.addEventListener("click", () => openModal(modalSettings));
-  qs("#m_btnSettings")?.addEventListener("click", () => {
-    closeMobileMenu();
-    openModal(modalSettings);
-  });
+  function setupSettingsListeners() {
+    qs("#btnSettings")?.addEventListener("click", () => openModal(modalSettings));
+    qs("#m_btnSettings")?.addEventListener("click", () => {
+      closeMobileMenu();
+      openModal(modalSettings);
+    });
+  }
   
   /* ---------- Quick Start ---------- */
-  qs("#btnQuickStart")?.addEventListener("click", () => openModal(modalQuickStart));
-  qs("#m_btnQuickStart")?.addEventListener("click", () => {
-    closeMobileMenu();
-    openModal(modalQuickStart);
-  });
-  
-  // Backup-Hilfe aus QuickStart öffnen
-  qs("#btnShowBackupHelp")?.addEventListener("click", () => {
-    closeModal(modalQuickStart);
-    openModal(modalBackupHelp);
-  });
+  function setupQuickStartListeners() {
+    qs("#btnQuickStart")?.addEventListener("click", () => openModal(modalQuickStart));
+    qs("#m_btnQuickStart")?.addEventListener("click", () => {
+      closeMobileMenu();
+      openModal(modalQuickStart);
+    });
+    
+    // Backup-Hilfe aus QuickStart öffnen
+    qs("#btnShowBackupHelp")?.addEventListener("click", () => {
+      closeModal(modalQuickStart);
+      openModal(modalBackupHelp);
+    });
+  }
   
   mBtnLogin?.addEventListener("click", () => {
     closeMobileMenu();
@@ -1912,7 +1916,7 @@ Stefanie`;
       const dtEnd = toICSDateUTC(slot.ends_at);
       const uidVal = `${slot.id}@terminmanager.app`;
       const summary = (slot.title || "").replace(/\n/g, " ");
-      const description = `${currentBranding.appName || DEFAULT_BRANDING.appName}\nKapazitaet: ${slot.capacity}`;
+      const description = `${currentBranding.appName || DEFAULT_BRANDING.appName}\nKapazität: ${slot.capacity}`;
       const ics = `BEGIN:VCALENDAR
 VERSION:2.0
 PRODID:-//Termin Manager//DE
@@ -2008,6 +2012,10 @@ END:VCALENDAR`;
     renderAll();
     setupServiceWorkerUpdate();
     renderStatus();
+    
+    // Event-Listener für Buttons (muss nach DOM-Load sein)
+    setupSettingsListeners();
+    setupQuickStartListeners();
     
     // First-Run: Zeige QuickStart beim ersten App-Start
     const hasSeenQuickStart = await storage.getKV("hasSeenQuickStart");
