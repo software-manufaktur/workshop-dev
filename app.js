@@ -385,7 +385,26 @@
     }
   }
 
-  const storage = { getState, saveState, exportBackup, importBackup, listLocalBackups, addLocalSnapshot, queueSet, queueClear, queueLength, queueGetLatest, saveSessionBackup, restoreSessionBackup, clearSessionBackup };
+  /* ---------- Generic KV Store ---------- */
+  async function getKV(key) {
+    try {
+      const result = await withStore("kv", "readonly", (store) => store.get(key));
+      return result?.value || null;
+    } catch (err) {
+      console.warn("getKV failed", err);
+      return null;
+    }
+  }
+
+  async function setKV(key, value) {
+    try {
+      await withStore("kv", "readwrite", (store) => store.put({ key, value }));
+    } catch (err) {
+      console.warn("setKV failed", err);
+    }
+  }
+
+  const storage = { getState, saveState, exportBackup, importBackup, listLocalBackups, addLocalSnapshot, queueSet, queueClear, queueLength, queueGetLatest, saveSessionBackup, restoreSessionBackup, clearSessionBackup, getKV, setKV };
   /* ---------- Supabase & Sync ---------- */
   async function handleAuthCallback() {
     if (!supabaseClient) return;
