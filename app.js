@@ -488,12 +488,37 @@
 
   async function refreshOrgMembership() {
     if (!supabaseClient || !authUser) return;
+    
+    // Fetch org memberships
     const { data, error } = await supabaseClient.from("org_members").select("org_id, role, orgs(name)").eq("user_id", authUser.id);
     if (error) {
       console.warn("org_members fetch failed", error);
       return;
     }
-    const orgs = (data || []).map((o) => ({ id: o.org_id, name: o.orgs?.name || "Team", role: o.role || "user" }));
+    
+    let orgs = (data || []).map((o) => ({ id: o.org_id, name: o.orgs?.name || "Team", role: o.role || "user" }));
+    
+    // iOS-Fix: Wenn User keine Org hat, automatisch eine erstellen
+    if (!orgs.length && authUser?.email) {
+      console.log("⚠️ User has no organization - creating personal org...");
+      try {
+        const { data: newOrg, error: createError } = await supabaseClient.rpc('create_org', {
+          p_name: authUser.email
+        });
+        
+        if (createError) {
+          console.error("Failed to create personal org:", createError);
+        } else {
+          console.log("✅ Personal org created:", newOrg.id);
+          // Refresh org memberships after creation
+          const { data: refreshData } = await supabaseClient.from("org_members").select("org_id, role, orgs(name)").eq("user_id", authUser.id);
+          orgs = (refreshData || []).map((o) => ({ id: o.org_id, name: o.orgs?.name || "Team", role: o.role || "user" }));
+        }
+      } catch (err) {
+        console.error("Org creation error:", err);
+      }
+    }
+    
     await updateState(
       (draft) => {
         draft.orgs = orgs;
@@ -508,6 +533,8 @@
       { skipSync: true, skipSnapshot: true }
     );
     await loadBrandingForOrg();
+    
+    return orgs;
   }
 
   async function updateUserInState(user) {
@@ -1809,6 +1836,9 @@ Stefanie`;
       const lastSync = formatDateTime(state.meta.lastSyncAt) || "noch nie";
       syncMeta.textContent = `Zuletzt aktualisiert: ${lastSync}${offline}`;
     }
+    
+    // Update organization info in settings
+    updateOrgInfo();
   }
 
   async function renderBrandingUI(branding = currentBranding) {
@@ -1943,6 +1973,218 @@ Stefanie`;
     renderAll();
   });
 
+  /* ---------- ORGANISATION MANAGEMENT ---------- */
+  
+  // Update current org info in settings
+  async function updateOrgInfo() {
+    const currentOrgInfo = qs("#currentOrgInfo");
+    const currentOrgName = qs("#currentOrgName");
+    const currentOrgRole = qs("#currentOrgRole");
+    const btnEditOrgName = qs("#btnEditOrgName");
+    const inviteSection = qs("#inviteSection");
+    
+    if (!currentOrgInfo || !state.activeOrgId) return;
+    
+    const org = state.orgs.find(o => o.id === state.activeOrgId);
+    if (!org) {
+      currentOrgName.textContent = "Keine Organisation ausgewählt";
+      currentOrgRole.textContent = "";
+      btnEditOrgName.classList.add("hidden");
+      inviteSection?.classList.add("hidden");
+      return;
+    }
+    
+    currentOrgName.textContent = org.name;
+    currentOrgRole.textContent = `Rolle: ${org.role === 'owner' ? 'Eigentümer' : org.role === 'admin' ? 'Administrator' : 'Mitglied'}`;
+    
+    // Show rename button only for owner/admin
+    if (org.role === 'owner' || org.role === 'admin') {
+      btnEditOrgName.classList.remove("hidden");
+      inviteSection?.classList.remove("hidden");
+    } else {
+      btnEditOrgName.classList.add("hidden");
+      inviteSection?.classList.add("hidden");
+    }
+  }
+  
+  // Rename organization
+  qs("#btnEditOrgName")?.addEventListener("click", () => {
+    const form = qs("#formRenameOrg");
+    const input = qs("#inputOrgNewName");
+    const org = state.orgs.find(o => o.id === state.activeOrgId);
+    if (!form || !input || !org) return;
+    
+    input.value = org.name;
+    form.classList.remove("hidden");
+  });
+  
+  qs("#btnCancelRenameOrg")?.addEventListener("click", () => {
+    const form = qs("#formRenameOrg");
+    if (form) form.classList.add("hidden");
+  });
+  
+  qs("#formRenameOrg")?.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const newName = qs("#inputOrgNewName")?.value?.trim();
+    if (!newName || !state.activeOrgId) return;
+    
+    try {
+      const { data, error } = await supabaseClient.rpc('rename_org', {
+        p_org_id: state.activeOrgId,
+        p_new_name: newName
+      });
+      
+      if (error) throw error;
+      
+      // Update local state
+      await updateState(draft => {
+        const org = draft.orgs.find(o => o.id === state.activeOrgId);
+        if (org) org.name = newName;
+      });
+      
+      // Update UI
+      const teamSelect = qs("#teamSelect");
+      if (teamSelect) {
+        const option = teamSelect.querySelector(`option[value="${state.activeOrgId}"]`);
+        if (option) option.textContent = newName;
+      }
+      
+      qs("#formRenameOrg")?.classList.add("hidden");
+      updateOrgInfo();
+      showToast("Organisation umbenannt", "success");
+    } catch (err) {
+      console.error("Rename org error:", err);
+      showToast("Fehler beim Umbenennen: " + err.message, "error");
+    }
+  });
+  
+  // Create new organization
+  qs("#formCreateOrg")?.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const orgName = qs("#inputOrgName")?.value?.trim();
+    if (!orgName) return;
+    
+    try {
+      const { data, error } = await supabaseClient.rpc('create_org', {
+        p_name: orgName
+      });
+      
+      if (error) throw error;
+      
+      // Refresh org membership
+      const orgs = await refreshOrgMembership();
+      
+      // Switch to new org
+      await updateState(draft => {
+        draft.activeOrgId = data.id;
+      }, { skipSnapshot: true });
+      
+      await loadBrandingForOrg(data.id);
+      renderAll();
+      renderAuth();
+      
+      qs("#inputOrgName").value = "";
+      showToast("Organisation erstellt", "success");
+    } catch (err) {
+      console.error("Create org error:", err);
+      showToast("Fehler beim Erstellen: " + err.message, "error");
+    }
+  });
+  
+  // Generate and display invite link
+  async function generateInviteLink() {
+    if (!state.activeOrgId) return;
+    
+    try {
+      const { data: code, error } = await supabaseClient.rpc('generate_invite_code', {
+        p_org_id: state.activeOrgId
+      });
+      
+      if (error) throw error;
+      
+      const inviteLink = `${window.location.origin}${window.location.pathname}?invite=${code}`;
+      const linkInput = qs("#inviteLink");
+      if (linkInput) linkInput.value = inviteLink;
+      
+      return inviteLink;
+    } catch (err) {
+      console.error("Generate invite error:", err);
+      showToast("Fehler beim Generieren: " + err.message, "error");
+    }
+  }
+  
+  // Copy invite link
+  qs("#btnCopyInvite")?.addEventListener("click", async () => {
+    let link = qs("#inviteLink")?.value;
+    
+    if (!link) {
+      link = await generateInviteLink();
+    }
+    
+    if (link) {
+      try {
+        await navigator.clipboard.writeText(link);
+        showToast("Link kopiert", "success");
+      } catch (err) {
+        // Fallback for older browsers
+        const input = qs("#inviteLink");
+        if (input) {
+          input.select();
+          document.execCommand('copy');
+          showToast("Link kopiert", "success");
+        }
+      }
+    }
+  });
+  
+  // Check for invite code in URL on load
+  async function checkInviteCode() {
+    const urlParams = new URLSearchParams(window.location.search);
+    const inviteCode = urlParams.get('invite');
+    
+    if (!inviteCode) return;
+    
+    if (!authUser) {
+      showToast("Bitte melde dich zuerst an, um der Organisation beizutreten", "info");
+      return;
+    }
+    
+    try {
+      const { data, error } = await supabaseClient.rpc('join_org_by_code', {
+        p_invite_code: inviteCode
+      });
+      
+      if (error) throw error;
+      
+      // Refresh org membership
+      await refreshOrgMembership();
+      
+      // Switch to new org
+      await updateState(draft => {
+        draft.activeOrgId = data.org_id;
+      }, { skipSnapshot: true });
+      
+      await loadBrandingForOrg(data.org_id);
+      renderAll();
+      renderAuth();
+      
+      // Remove invite parameter from URL
+      const url = new URL(window.location);
+      url.searchParams.delete('invite');
+      window.history.replaceState({}, '', url);
+      
+      showToast("Erfolgreich der Organisation beigetreten!", "success");
+    } catch (err) {
+      console.error("Join org error:", err);
+      showToast("Fehler beim Beitreten: " + err.message, "error");
+      
+      // Remove invalid invite code from URL
+      const url = new URL(window.location);
+      url.searchParams.delete('invite');
+      window.history.replaceState({}, '', url);
+    }
+  }
+
   /* ---------- ICS ---------- */
   function toICSDateUTC(isoStr) {
     const d = new Date(isoStr);
@@ -2056,6 +2298,9 @@ END:VCALENDAR`;
     // Event-Listener für Buttons (muss nach DOM-Load sein)
     setupSettingsListeners();
     setupQuickStartListeners();
+    
+    // Check for invite code in URL
+    await checkInviteCode();
     
     // First-Run: Zeige QuickStart beim ersten App-Start
     const hasSeenQuickStart = await storage.getKV("hasSeenQuickStart");

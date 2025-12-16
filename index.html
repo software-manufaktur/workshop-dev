@@ -209,6 +209,61 @@
           </div>
         </section>
 
+        <!-- Organisations-Verwaltung -->
+        <section class="border-t border-gray-200 pt-6">
+          <h3 class="font-semibold text-lg mb-3 text-primary">🏛️ Organisation</h3>
+          
+          <div class="space-y-4">
+            <!-- Aktuelle Organisation anzeigen -->
+            <div id="currentOrgInfo" class="bg-slate-50 border border-slate-200 rounded-xl p-4">
+              <div class="flex items-center justify-between">
+                <div>
+                  <div class="text-sm text-slate-500 mb-1">Aktuelle Organisation:</div>
+                  <div id="currentOrgName" class="font-semibold text-lg text-slate-900">-</div>
+                  <div id="currentOrgRole" class="text-xs text-slate-500 mt-1">-</div>
+                </div>
+                <button id="btnEditOrgName" class="px-3 py-2 rounded-xl bg-soft hover:bg-mid text-sm hidden">Umbenennen</button>
+              </div>
+            </div>
+            
+            <!-- Organisation umbenennen -->
+            <form id="formRenameOrg" class="hidden bg-blue-50 border border-blue-200 rounded-xl p-4 space-y-3">
+              <label class="flex flex-col gap-1">
+                <span class="text-sm font-medium">Neuer Name</span>
+                <input id="inputOrgNewName" type="text" required class="px-3 py-2 rounded-xl border border-gray-400/60" placeholder="Mein Team">
+              </label>
+              <div class="flex gap-2">
+                <button type="submit" class="px-4 py-2 rounded-xl text-white btn-primary">Speichern</button>
+                <button type="button" id="btnCancelRenameOrg" class="px-4 py-2 rounded-xl bg-soft hover:bg-mid">Abbrechen</button>
+              </div>
+            </form>
+            
+            <!-- Neue Organisation erstellen -->
+            <details class="bg-white border border-gray-200 rounded-xl">
+              <summary class="px-4 py-3 cursor-pointer hover:bg-gray-50 font-medium text-slate-700">
+                ➕ Neue Organisation erstellen
+              </summary>
+              <form id="formCreateOrg" class="p-4 pt-2 space-y-3 border-t border-gray-200">
+                <label class="flex flex-col gap-1">
+                  <span class="text-sm font-medium">Name der Organisation</span>
+                  <input id="inputOrgName" type="text" required class="px-3 py-2 rounded-xl border border-gray-400/60" placeholder="Meine neue Organisation">
+                </label>
+                <button type="submit" class="px-4 py-2 rounded-xl text-white btn-primary">Organisation erstellen</button>
+              </form>
+            </details>
+            
+            <!-- Einladungslink generieren (nur Owner/Admin) -->
+            <div id="inviteSection" class="hidden bg-emerald-50 border border-emerald-200 rounded-xl p-4 space-y-3">
+              <div class="font-medium text-slate-900">Mitglieder einladen</div>
+              <div class="text-sm text-slate-600">Teile diesen Link, um Mitglieder einzuladen:</div>
+              <div class="flex gap-2">
+                <input id="inviteLink" type="text" readonly class="flex-1 px-3 py-2 rounded-xl border border-gray-400/60 bg-white text-sm font-mono">
+                <button id="btnCopyInvite" type="button" class="px-4 py-2 rounded-xl bg-emerald-600 text-white hover:bg-emerald-700">📋 Kopieren</button>
+              </div>
+            </div>
+          </div>
+        </section>
+
         <!-- Branding -->
         <section class="border-t border-gray-200 pt-6">
           <div class="flex items-center justify-between mb-3">

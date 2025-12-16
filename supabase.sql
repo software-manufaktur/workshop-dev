@@ -362,6 +362,101 @@ begin
 end;
 $$;
 
+-- Rename organization - only owner/admin
+create or replace function public.rename_org(
+  p_org_id uuid,
+  p_new_name text
+) returns public.orgs
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_org public.orgs;
+begin
+  perform public._require_org_role(p_org_id, array['owner','admin']);
+
+  if p_new_name is null or trim(p_new_name) = '' then
+    raise exception 'name cannot be empty';
+  end if;
+
+  update public.orgs
+  set name = trim(p_new_name),
+      updated_at = now()
+  where id = p_org_id
+  returning * into v_org;
+
+  return v_org;
+end;
+$$;
+
+-- Generate invite code for organization - only owner/admin
+create or replace function public.generate_invite_code(
+  p_org_id uuid
+) returns text
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_code text;
+begin
+  perform public._require_org_role(p_org_id, array['owner','admin']);
+
+  -- Generate 8-character code (alphanumeric)
+  v_code := upper(substring(md5(random()::text || p_org_id::text || now()::text) from 1 for 8));
+
+  -- Store in org metadata (you could create a separate invite_codes table if needed)
+  update public.orgs
+  set metadata = coalesce(metadata, '{}'::jsonb) || jsonb_build_object('invite_code', v_code, 'invite_expires', (now() + interval '7 days')::text)
+  where id = p_org_id;
+
+  return v_code;
+end;
+$$;
+
+-- Join organization by invite code
+create or replace function public.join_org_by_code(
+  p_invite_code text
+) returns public.org_members
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_org_id uuid;
+  v_row public.org_members;
+  v_expires timestamp;
+begin
+  if auth.uid() is null then
+    raise exception 'not authenticated';
+  end if;
+
+  -- Find org by invite code
+  select id, (metadata->>'invite_expires')::timestamp
+  into v_org_id, v_expires
+  from public.orgs
+  where metadata->>'invite_code' = upper(p_invite_code);
+
+  if v_org_id is null then
+    raise exception 'invalid invite code';
+  end if;
+
+  if v_expires < now() then
+    raise exception 'invite code expired';
+  end if;
+
+  -- Add user as member
+  insert into public.org_members (org_id, user_id, role)
+  values (v_org_id, auth.uid(), 'user')
+  on conflict (org_id, user_id) do update
+    set role = excluded.role
+  returning * into v_row;
+
+  return v_row;
+end;
+$$;
+
 -- Set org settings (upsert) - only owner/admin
 create or replace function public.set_org_settings(
   p_org_id uuid,
