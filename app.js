@@ -1644,13 +1644,11 @@ Stefanie`;
   function setupSettingsListeners() {
     qs("#btnSettings")?.addEventListener("click", () => {
       openModal(modalSettings);
-      updateOrgInfo(); // Lade Org-Info wenn Settings geöffnet werden
       switchToTab('branding'); // Standardmäßig Design-Tab
     });
     qs("#m_btnSettings")?.addEventListener("click", () => {
       closeMobileMenu();
       openModal(modalSettings);
-      updateOrgInfo(); // Lade Org-Info wenn Settings geöffnet werden
       switchToTab('branding'); // Standardmäßig Design-Tab
     });
     
@@ -1686,9 +1684,9 @@ Stefanie`;
       activeContent.classList.remove('hidden');
     }
     
-    // Bei Team-Tab: Org-Info und Invite-Link laden
-    if (tabName === 'team') {
-      updateOrgInfo();
+    // Bei Team-Tab: Org-Info und Invite-Link laden (nur wenn angemeldet)
+    if (tabName === 'team' && authUser) {
+      updateOrgInfo().catch(err => console.warn('updateOrgInfo failed:', err));
     }
   }
   
@@ -2072,7 +2070,7 @@ Stefanie`;
       // Automatisch Einladungslink generieren wenn leer
       const inviteLinkInput = qs("#inviteLink");
       if (inviteLinkInput && !inviteLinkInput.value) {
-        generateInviteLink();
+        generateInviteLink().catch(err => console.warn('generateInviteLink failed:', err));
       }
     } else {
       btnEditOrgName?.classList.add("hidden");
@@ -2166,7 +2164,20 @@ Stefanie`;
   
   // Generate and display invite link
   async function generateInviteLink() {
-    if (!state.activeOrgId) return;
+    // State aus Storage laden
+    const state = await storage.getState();
+    
+    if (!state.activeOrgId) {
+      console.warn('No active org for invite link');
+      return;
+    }
+    
+    if (!supabaseClient) {
+      console.warn('No supabase client - cannot generate invite link');
+      const linkInput = qs("#inviteLink");
+      if (linkInput) linkInput.value = "Bitte zuerst anmelden";
+      return;
+    }
     
     try {
       const { data: code, error } = await supabaseClient.rpc('generate_invite_code', {
@@ -2183,6 +2194,8 @@ Stefanie`;
     } catch (err) {
       console.error("Generate invite error:", err);
       showToast("Fehler beim Generieren: " + err.message, "error");
+      const linkInput = qs("#inviteLink");
+      if (linkInput) linkInput.value = "Fehler beim Generieren";
     }
   }
   
