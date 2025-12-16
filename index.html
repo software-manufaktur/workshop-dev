@@ -69,10 +69,6 @@
     <div class="flex items-center justify-center gap-3 mb-6">
       <img id="brandLogo" src="static/logo.png" alt="Logo" class="h-12 w-auto">
       <h1 id="brandTitle" class="text-2xl font-semibold text-primary">Terminbuch</h1>
-      <button id="btnQuickStart" type="button" class="px-3 py-2 rounded-xl bg-blue-500 hover:bg-blue-600 text-white text-sm flex items-center gap-1" title="Schnellstart-Anleitung">
-        <span>❓</span>
-        <span class="hidden sm:inline">Schnellstart</span>
-      </button>
     </div>
     
     <!-- Aktionen -->
@@ -88,6 +84,7 @@
           <input type="file" id="fileRestore" accept="application/json" class="hidden">
           <button id="btnArchiveView" type="button" class="px-3 py-2 rounded-xl bg-soft hover:bg-mid text-sm text-dark">Archiv</button>
           <button id="btnSettings" type="button" class="px-3 py-2 rounded-xl bg-soft hover:bg-mid text-sm text-dark">⚙️ Einstellungen</button>
+          <button id="btnQuickStart" type="button" class="px-3 py-2 rounded-xl bg-soft hover:bg-mid text-sm text-dark" title="Schnellstart-Anleitung">❓ Hilfe</button>
         </div>
       </div>
     </div>
@@ -102,6 +99,7 @@
         <button class="text-slate-500 hover:text-slate-700" data-close="mobilemenu">X</button>
       </div>
       <div class="text-xs uppercase tracking-wide text-slate-500">Hauptbereich</div>
+      <button id="m_btnQuickStart" type="button" class="px-3 py-3 rounded-xl bg-soft text-left text-dark">❓ Hilfe & Schnellstart</button>
       <button id="m_btnManageSlots" type="button" class="px-3 py-3 rounded-xl bg-soft text-left text-dark" data-label-terms-action>Termin anlegen</button>
       <button id="m_btnExportCsv" type="button" class="px-3 py-3 rounded-xl bg-soft text-left text-dark">CSV Export</button>
       <button id="m_btnBackup" type="button" class="px-3 py-3 rounded-xl bg-soft text-left text-dark">Backup exportieren</button>
@@ -109,7 +107,7 @@
       <input type="file" id="m_fileRestore" accept="application/json" class="hidden">
       <button id="m_btnArchiveView" type="button" class="px-3 py-3 rounded-xl bg-soft text-left text-dark">Archiv</button>
       <button id="m_btnSettings" type="button" class="px-3 py-3 rounded-xl bg-soft text-left text-dark">⚙️ Einstellungen</button>
-      <button id="m_btnQuickStart" type="button" class="px-3 py-3 rounded-xl bg-blue-500 text-white text-left">❓ Schnellstart</button>
+
       <div class="text-xs uppercase tracking-wide text-slate-500 mt-4">Konto</div>
       <button id="m_btnLogin" type="button" class="px-3 py-3 rounded-xl bg-soft text-left text-dark">Anmelden</button>
       <button id="m_btnLogout" type="button" class="px-3 py-3 rounded-xl bg-soft text-left text-dark hidden">Abmelden</button>
