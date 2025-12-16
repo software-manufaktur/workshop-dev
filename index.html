@@ -69,6 +69,10 @@
     <div class="flex items-center justify-center gap-3 mb-6">
       <img id="brandLogo" src="static/logo.png" alt="Logo" class="h-12 w-auto">
       <h1 id="brandTitle" class="text-2xl font-semibold text-primary">Terminbuch</h1>
+      <button id="btnQuickStart" type="button" class="px-3 py-2 rounded-xl bg-blue-500 hover:bg-blue-600 text-white text-sm flex items-center gap-1" title="Schnellstart-Anleitung">
+        <span>❓</span>
+        <span class="hidden sm:inline">Schnellstart</span>
+      </button>
     </div>
     
     <!-- Aktionen -->
@@ -105,6 +109,7 @@
       <input type="file" id="m_fileRestore" accept="application/json" class="hidden">
       <button id="m_btnArchiveView" type="button" class="px-3 py-3 rounded-xl bg-soft text-left text-dark">Archiv</button>
       <button id="m_btnSettings" type="button" class="px-3 py-3 rounded-xl bg-soft text-left text-dark">⚙️ Einstellungen</button>
+      <button id="m_btnQuickStart" type="button" class="px-3 py-3 rounded-xl bg-blue-500 text-white text-left">❓ Schnellstart</button>
       <div class="text-xs uppercase tracking-wide text-slate-500 mt-4">Konto</div>
       <button id="m_btnLogin" type="button" class="px-3 py-3 rounded-xl bg-soft text-left text-dark">Anmelden</button>
       <button id="m_btnLogout" type="button" class="px-3 py-3 rounded-xl bg-soft text-left text-dark hidden">Abmelden</button>
@@ -366,6 +371,86 @@
       <div class="flex justify-end gap-2">
         <button id="btnCancelImport" data-close="backupimport" class="px-4 py-2 rounded-xl bg-gray-200">Abbrechen</button>
         <button id="btnConfirmImport" class="px-4 py-2 rounded-xl bg-emerald-600 text-white">Wiederherstellen</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Schnellstart -->
+  <div id="modalQuickStart" class="fixed inset-0 z-50 bg-black/40 hidden items-center justify-center p-4">
+    <div class="bg-white rounded-2xl shadow-xl w-full max-w-3xl p-6 max-h-[90vh] overflow-y-auto">
+      <div class="flex items-start justify-between mb-4">
+        <h3 class="text-2xl font-bold text-primary">🚀 Schnellstart – In 4 Schritten startklar</h3>
+        <button data-close="quickstart" class="text-slate-500 hover:text-slate-700 text-2xl leading-none">&times;</button>
+      </div>
+      
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+        <!-- Schritt 1: Termin anlegen -->
+        <div class="bg-gradient-to-br from-blue-50 to-blue-100 border-2 border-blue-300 rounded-xl p-5">
+          <div class="text-3xl mb-2">📅</div>
+          <h4 class="font-bold text-lg mb-2 text-blue-900">1. Termin anlegen</h4>
+          <p class="text-sm text-blue-800 mb-3">Erstelle deinen ersten Workshop oder Kurs mit wenigen Klicks.</p>
+          <ul class="text-sm text-blue-700 space-y-1 list-disc ml-4">
+            <li>Klicke auf "Termin anlegen"</li>
+            <li>Titel, Datum und Kapazität eingeben</li>
+            <li>Fertig – sofort verfügbar!</li>
+          </ul>
+        </div>
+
+        <!-- Schritt 2: Buchungen verwalten -->
+        <div class="bg-gradient-to-br from-green-50 to-green-100 border-2 border-green-300 rounded-xl p-5">
+          <div class="text-3xl mb-2">✅</div>
+          <h4 class="font-bold text-lg mb-2 text-green-900">2. Buchungen annehmen</h4>
+          <p class="text-sm text-green-800 mb-3">Teilnehmer können sich direkt für Termine anmelden.</p>
+          <ul class="text-sm text-green-700 space-y-1 list-disc ml-4">
+            <li>Klicke auf einen Termin</li>
+            <li>"Buchen"-Button für Anmeldungen</li>
+            <li>Name, Telefon, Personenzahl erfassen</li>
+          </ul>
+        </div>
+
+        <!-- Schritt 3: Cloud-Sync -->
+        <div class="bg-gradient-to-br from-purple-50 to-purple-100 border-2 border-purple-300 rounded-xl p-5">
+          <div class="text-3xl mb-2">☁️</div>
+          <h4 class="font-bold text-lg mb-2 text-purple-900">3. Anmelden (optional)</h4>
+          <p class="text-sm text-purple-800 mb-3">Nutze die App von mehreren Geräten und im Team.</p>
+          <ul class="text-sm text-purple-700 space-y-1 list-disc ml-4">
+            <li>E-Mail eingeben → Magic Link erhalten</li>
+            <li>Automatische Cloud-Synchronisation</li>
+            <li>Zugriff von Handy, Tablet & PC</li>
+          </ul>
+        </div>
+
+        <!-- Schritt 4: Backups -->
+        <div class="bg-gradient-to-br from-amber-50 to-amber-100 border-2 border-amber-300 rounded-xl p-5">
+          <div class="text-3xl mb-2">💾</div>
+          <h4 class="font-bold text-lg mb-2 text-amber-900">4. Datensicherheit</h4>
+          <p class="text-sm text-amber-800 mb-3">Deine Daten sind automatisch geschützt.</p>
+          <ul class="text-sm text-amber-700 space-y-1 list-disc ml-4">
+            <li>Automatische lokale Speicherung</li>
+            <li>Online: Cloud-Backup bei jedem Sync</li>
+            <li>Extra: JSON-Export für manuelle Backups</li>
+          </ul>
+        </div>
+      </div>
+
+      <!-- Zusätzliche Tipps -->
+      <div class="bg-slate-50 border border-slate-200 rounded-xl p-4 mb-4">
+        <h4 class="font-semibold text-base mb-2 flex items-center gap-2">
+          <span>💡</span>
+          <span>Wichtige Tipps</span>
+        </h4>
+        <ul class="text-sm text-slate-700 space-y-2">
+          <li><strong>Offline-fähig:</strong> Die App funktioniert auch ohne Internet – Änderungen werden später synchronisiert</li>
+          <li><strong>Archiv:</strong> Vergangene Termine werden automatisch archiviert, bleiben aber abrufbar</li>
+          <li><strong>CSV-Export:</strong> Exportiere Teilnehmerlisten für externe Verwendung</li>
+          <li><strong>Team-Modus:</strong> Lade Kollegen ein, um gemeinsam Termine zu verwalten</li>
+        </ul>
+      </div>
+
+      <!-- Call-to-Action -->
+      <div class="flex flex-col sm:flex-row gap-3">
+        <button data-close="quickstart" class="flex-1 px-4 py-3 rounded-xl bg-primary text-white font-semibold hover:opacity-90">Los geht's! 🚀</button>
+        <button id="btnShowBackupHelp" class="px-4 py-3 rounded-xl bg-slate-200 hover:bg-slate-300 text-slate-700">📚 Backup-Hilfe öffnen</button>
       </div>
     </div>
   </div>

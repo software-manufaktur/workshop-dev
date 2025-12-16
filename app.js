@@ -763,9 +763,10 @@
   const modalBackupImport = qs("#modalBackupImport");
   const modalBackupHelp = qs("#modalBackupHelp");
   const modalSettings = qs("#modalSettings");
+  const modalQuickStart = qs("#modalQuickStart");
   function openModal(el) {
     if (!el) return;
-    [modalBooking, modalSlots, modalBackupImport, modalBackupHelp, modalSettings].forEach((m) => {
+    [modalBooking, modalSlots, modalBackupImport, modalBackupHelp, modalSettings, modalQuickStart].forEach((m) => {
       if (!m) return;
       m.classList.add("hidden");
       m.classList.remove("flex");
@@ -779,13 +780,14 @@
     el.classList.remove("flex");
   }
   document.addEventListener("keydown", (e) => {
-    if (e.key === "Escape") [modalBooking, modalSlots, modalConfirmDelete, modalBackupImport, modalBackupHelp, modalSettings].forEach((m) => closeModal(m));
+    if (e.key === "Escape") [modalBooking, modalSlots, modalConfirmDelete, modalBackupImport, modalBackupHelp, modalSettings, modalQuickStart].forEach((m) => closeModal(m));
   });
   qsa("[data-close='booking']").forEach((b) => b.addEventListener("click", () => closeModal(modalBooking)));
   qsa("[data-close='slots']").forEach((b) => b.addEventListener("click", () => closeModal(modalSlots)));
   qsa("[data-close='backup']").forEach((b) => b.addEventListener("click", () => closeModal(modalBackupImport)));
   qsa("[data-close='backuphelp']").forEach((b) => b.addEventListener("click", () => closeModal(modalBackupHelp)));
   qsa("[data-close='settings']").forEach((b) => b.addEventListener("click", () => closeModal(modalSettings)));
+  qsa("[data-close='quickstart']").forEach((b) => b.addEventListener("click", () => closeModal(modalQuickStart)));
   modalSlots?.addEventListener("click", (e) => {
     if (e.target === modalSlots) closeModal(modalSlots);
   });
@@ -797,6 +799,9 @@
   });
   modalSettings?.addEventListener("click", (e) => {
     if (e.target === modalSettings) closeModal(modalSettings);
+  });
+  modalQuickStart?.addEventListener("click", (e) => {
+    if (e.target === modalQuickStart) closeModal(modalQuickStart);
   });
 
   /* ---------- Domain helpers ---------- */
@@ -1568,6 +1573,19 @@ Stefanie`;
     openModal(modalSettings);
   });
   
+  /* ---------- Quick Start ---------- */
+  qs("#btnQuickStart")?.addEventListener("click", () => openModal(modalQuickStart));
+  qs("#m_btnQuickStart")?.addEventListener("click", () => {
+    closeMobileMenu();
+    openModal(modalQuickStart);
+  });
+  
+  // Backup-Hilfe aus QuickStart öffnen
+  qs("#btnShowBackupHelp")?.addEventListener("click", () => {
+    closeModal(modalQuickStart);
+    openModal(modalBackupHelp);
+  });
+  
   mBtnLogin?.addEventListener("click", () => {
     closeMobileMenu();
     const email = qs("#authEmail");
@@ -1990,6 +2008,15 @@ END:VCALENDAR`;
     renderAll();
     setupServiceWorkerUpdate();
     renderStatus();
+    
+    // First-Run: Zeige QuickStart beim ersten App-Start
+    const hasSeenQuickStart = await storage.getKV("hasSeenQuickStart");
+    if (!hasSeenQuickStart) {
+      setTimeout(() => {
+        openModal(modalQuickStart);
+        storage.setKV("hasSeenQuickStart", true);
+      }, 800); // Kurze Verzögerung damit UI geladen ist
+    }
   }
 
   document.addEventListener("DOMContentLoaded", init);
