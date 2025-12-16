@@ -1645,12 +1645,51 @@ Stefanie`;
     qs("#btnSettings")?.addEventListener("click", () => {
       openModal(modalSettings);
       updateOrgInfo(); // Lade Org-Info wenn Settings geöffnet werden
+      switchToTab('branding'); // Standardmäßig Design-Tab
     });
     qs("#m_btnSettings")?.addEventListener("click", () => {
       closeMobileMenu();
       openModal(modalSettings);
       updateOrgInfo(); // Lade Org-Info wenn Settings geöffnet werden
+      switchToTab('branding'); // Standardmäßig Design-Tab
     });
+    
+    // Tab-Wechsel
+    qsa('.tab-button').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const tabName = btn.getAttribute('data-tab');
+        switchToTab(tabName);
+      });
+    });
+  }
+  
+  function switchToTab(tabName) {
+    // Alle Tabs & Buttons zurücksetzen
+    qsa('.tab-button').forEach(btn => {
+      btn.classList.remove('border-primary', 'text-primary');
+      btn.classList.add('border-transparent');
+    });
+    qsa('.tab-content').forEach(content => {
+      content.classList.add('hidden');
+    });
+    
+    // Aktiven Tab aktivieren
+    const activeBtn = qs(`.tab-button[data-tab="${tabName}"]`);
+    const activeContent = qs(`.tab-content[data-tab-content="${tabName}"]`);
+    
+    if (activeBtn) {
+      activeBtn.classList.remove('border-transparent');
+      activeBtn.classList.add('border-primary', 'text-primary');
+    }
+    
+    if (activeContent) {
+      activeContent.classList.remove('hidden');
+    }
+    
+    // Bei Team-Tab: Org-Info und Invite-Link laden
+    if (tabName === 'team') {
+      updateOrgInfo();
+    }
   }
   
   /* ---------- Quick Start ---------- */
@@ -2029,6 +2068,12 @@ Stefanie`;
     if (org.role === 'owner' || org.role === 'admin') {
       btnEditOrgName?.classList.remove("hidden");
       inviteSection?.classList.remove("hidden");
+      
+      // Automatisch Einladungslink generieren wenn leer
+      const inviteLinkInput = qs("#inviteLink");
+      if (inviteLinkInput && !inviteLinkInput.value) {
+        generateInviteLink();
+      }
     } else {
       btnEditOrgName?.classList.add("hidden");
       inviteSection?.classList.add("hidden");

@@ -163,40 +163,144 @@
 
   <!-- Einstellungen Modal -->
   <div id="modalSettings" class="fixed inset-0 z-50 bg-black/40 hidden items-center justify-center p-4">
-    <div class="bg-white rounded-2xl shadow-xl w-full max-w-3xl max-h-[85vh] overflow-y-auto">
-      <div class="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between">
+    <div class="bg-white rounded-2xl shadow-xl w-full max-w-3xl max-h-[85vh] flex flex-col">
+      <div class="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between rounded-t-2xl">
         <h2 class="text-xl font-bold text-primary">⚙️ Einstellungen</h2>
         <button data-close="settings" class="text-slate-500 hover:text-slate-700 text-2xl leading-none">&times;</button>
       </div>
       
-      <div class="p-6 space-y-6">
-        <!-- Backup-Verwaltung -->
-        <section>
-          <div class="flex items-center justify-between mb-3">
-            <h3 class="font-semibold text-lg text-primary">📦 Backup-Verwaltung</h3>
-            <button id="btnBackupHelp" type="button" class="text-blue-500 hover:text-blue-700" title="Hilfe zu Backups">ℹ️ Hilfe</button>
-          </div>
-          
-          <div class="bg-blue-50 border border-blue-200 rounded-xl p-4 mb-4 text-sm">
-            <p><strong>Automatische Sicherung:</strong> Alle Änderungen werden sofort auf deinem Gerät gespeichert.</p>
-            <p class="mt-1"><strong>Online-Speicherung:</strong> Bei Anmeldung werden deine Daten automatisch online gesichert.</p>
-          </div>
-          
-          <!-- Export & Backup Aktionen -->
-          <div class="mb-6 flex flex-wrap gap-3">
-            <button id="btnExportCsv" type="button" class="px-4 py-2 rounded-xl bg-emerald-600 text-white hover:bg-emerald-700 text-sm flex items-center gap-2">
-              <span>📊</span> CSV exportieren
-            </button>
-            <button id="btnBackup" type="button" class="px-4 py-2 rounded-xl text-white btn-primary hover:opacity-90 text-sm flex items-center gap-2">
-              <span>💾</span> JSON Backup
-            </button>
-            <label for="fileRestore" class="px-4 py-2 rounded-xl bg-blue-600 text-white hover:bg-blue-700 text-sm cursor-pointer flex items-center gap-2">
-              <span>📥</span> Backup wiederherstellen
-            </label>
-            <input type="file" id="fileRestore" accept="application/json" class="hidden">
-          </div>
-          
+      <!-- Tabs -->
+      <div class="flex border-b border-gray-200 px-6 bg-gray-50">
+        <button class="tab-button px-4 py-3 font-medium border-b-2 border-transparent hover:border-gray-300 transition" data-tab="auth">
+          🔐 Anmeldung
+        </button>
+        <button class="tab-button px-4 py-3 font-medium border-b-2 border-transparent hover:border-gray-300 transition" data-tab="team">
+          🏛️ Team
+        </button>
+        <button class="tab-button px-4 py-3 font-medium border-b-2 border-transparent hover:border-gray-300 transition" data-tab="backup">
+          💾 Backup
+        </button>
+        <button class="tab-button px-4 py-3 font-medium border-b-2 border-primary text-primary" data-tab="branding">
+          🎨 Design
+        </button>
+      </div>
+      
+      <div class="flex-1 overflow-y-auto p-6">
+        <!-- Tab: Anmeldung -->
+        <div class="tab-content" data-tab-content="auth">
           <div class="space-y-4">
+            <div class="bg-blue-50 border border-blue-200 rounded-xl p-4">
+              <div class="flex items-center gap-2 mb-2">
+                <span id="statusDot" class="text-xl"></span>
+                <span id="authStatus" class="font-medium">Lädt...</span>
+              </div>
+              <div id="autoBackupStatus" class="text-xs mt-2"></div>
+            </div>
+
+            <form id="authForm" class="space-y-3">
+              <label class="flex flex-col gap-1">
+                <span class="text-sm font-medium">E-Mail</span>
+                <input id="email" type="email" required class="px-3 py-2 rounded-xl border border-gray-400/60" placeholder="deine@email.de">
+              </label>
+              <button type="submit" class="w-full px-4 py-3 rounded-xl text-white btn-primary hover:opacity-90">🔓 Anmelden (Magic Link)</button>
+              <p class="text-xs text-slate-500">Du erhältst einen Login-Link per E-Mail</p>
+            </form>
+
+            <button id="btnLogout" class="hidden w-full px-4 py-3 rounded-xl bg-red-500 text-white hover:bg-red-600">🚪 Abmelden</button>
+            
+            <div class="text-xs text-slate-500 mt-4">
+              <div class="font-medium mb-1">Organisationen:</div>
+              <select id="teamSelect" class="w-full px-3 py-2 rounded-xl border border-gray-400/60 bg-white text-sm"></select>
+            </div>
+            
+            <div id="syncMeta" class="text-xs text-slate-500 mt-2"></div>
+          </div>
+        </div>
+
+        <!-- Tab: Team -->
+        <div class="tab-content hidden" data-tab-content="team">
+          <div class="space-y-4">
+            <!-- Aktuelle Organisation -->
+            <div id="currentOrgInfo" class="bg-gradient-to-br from-blue-50 to-indigo-50 border border-blue-200 rounded-xl p-5">
+              <div class="flex items-start justify-between gap-4">
+                <div class="flex-1">
+                  <div class="text-xs uppercase tracking-wide text-blue-600 mb-1 font-semibold">Deine Organisation</div>
+                  <div id="currentOrgName" class="font-bold text-xl text-slate-900 mb-1">-</div>
+                  <div id="currentOrgRole" class="text-sm text-slate-600">-</div>
+                </div>
+                <button id="btnEditOrgName" class="px-4 py-2 rounded-xl bg-white border border-blue-300 hover:bg-blue-50 text-sm font-medium text-blue-700 shadow-sm hidden">✏️ Bearbeiten</button>
+              </div>
+            </div>
+            
+            <!-- Organisation umbenennen -->
+            <form id="formRenameOrg" class="hidden bg-white border-2 border-blue-300 rounded-xl p-4 space-y-3 shadow-sm">
+              <label class="flex flex-col gap-1">
+                <span class="text-sm font-semibold text-slate-700">Neuer Name</span>
+                <input id="inputOrgNewName" type="text" required class="px-3 py-2 rounded-xl border-2 border-blue-200 focus:border-blue-500 outline-none" placeholder="Mein Team">
+              </label>
+              <div class="flex gap-2">
+                <button type="submit" class="flex-1 px-4 py-2 rounded-xl text-white bg-blue-600 hover:bg-blue-700 font-medium">Speichern</button>
+                <button type="button" id="btnCancelRenameOrg" class="px-4 py-2 rounded-xl bg-gray-200 hover:bg-gray-300 font-medium">Abbrechen</button>
+              </div>
+            </form>
+            
+            <!-- Einladungslink -->
+            <div id="inviteSection" class="hidden bg-gradient-to-br from-emerald-50 to-teal-50 border border-emerald-200 rounded-xl p-5 space-y-3">
+              <div class="flex items-center gap-2">
+                <span class="text-2xl">👥</span>
+                <div class="font-bold text-lg text-slate-900">Mitglieder einladen</div>
+              </div>
+              <p class="text-sm text-slate-600">Teile diesen Link mit deinem Team:</p>
+              <div class="flex gap-2">
+                <input id="inviteLink" type="text" readonly class="flex-1 px-3 py-2 rounded-xl border-2 border-emerald-300 bg-white text-sm font-mono" placeholder="Link wird generiert...">
+                <button id="btnCopyInvite" type="button" class="px-4 py-2 rounded-xl bg-emerald-600 text-white hover:bg-emerald-700 font-medium shadow-sm">📋 Kopieren</button>
+              </div>
+              <p class="text-xs text-slate-500">Der Link ist 7 Tage gültig. Neue Mitglieder werden als "User" hinzugefügt.</p>
+            </div>
+            
+            <!-- Neue Organisation erstellen -->
+            <details class="bg-white border border-gray-200 rounded-xl overflow-hidden">
+              <summary class="px-5 py-3 cursor-pointer hover:bg-gray-50 font-semibold text-slate-700 flex items-center gap-2">
+                <span>➕</span> Neue Organisation erstellen
+              </summary>
+              <form id="formCreateOrg" class="p-5 pt-3 space-y-3 border-t border-gray-200 bg-gray-50">
+                <label class="flex flex-col gap-1">
+                  <span class="text-sm font-medium">Name der Organisation</span>
+                  <input id="inputOrgName" type="text" required class="px-3 py-2 rounded-xl border border-gray-300" placeholder="Meine neue Organisation">
+                </label>
+                <button type="submit" class="w-full px-4 py-2 rounded-xl text-white btn-primary hover:opacity-90">Organisation erstellen</button>
+              </form>
+            </details>
+          </div>
+        </div>
+
+        <!-- Tab: Backup -->
+        <div class="tab-content hidden" data-tab-content="backup">
+          <div class="space-y-4">
+            <div class="flex items-center justify-between mb-3">
+              <h3 class="font-semibold text-lg text-primary">📦 Backup-Verwaltung</h3>
+              <button id="btnBackupHelp" type="button" class="text-blue-500 hover:text-blue-700 text-sm" title="Hilfe zu Backups">ℹ️ Hilfe</button>
+            </div>
+            
+            <div class="bg-blue-50 border border-blue-200 rounded-xl p-4 text-sm">
+              <p><strong>Automatische Sicherung:</strong> Alle Änderungen werden sofort auf deinem Gerät gespeichert.</p>
+              <p class="mt-1"><strong>Online-Speicherung:</strong> Bei Anmeldung werden deine Daten automatisch online gesichert.</p>
+            </div>
+            
+            <!-- Export & Backup Aktionen -->
+            <div class="flex flex-wrap gap-3">
+              <button id="btnExportCsv" type="button" class="px-4 py-2 rounded-xl bg-emerald-600 text-white hover:bg-emerald-700 text-sm flex items-center gap-2">
+                <span>📊</span> CSV exportieren
+              </button>
+              <button id="btnBackup" type="button" class="px-4 py-2 rounded-xl text-white btn-primary hover:opacity-90 text-sm flex items-center gap-2">
+                <span>💾</span> JSON Backup
+              </button>
+              <label for="fileRestore" class="px-4 py-2 rounded-xl bg-blue-600 text-white hover:bg-blue-700 text-sm cursor-pointer flex items-center gap-2">
+                <span>📥</span> Backup wiederherstellen
+              </label>
+              <input type="file" id="fileRestore" accept="application/json" class="hidden">
+            </div>
+            
             <div>
               <h4 class="font-semibold mb-2">Lokale Sicherungen (letzte 10)</h4>
               <ul id="localBackups" class="space-y-1 text-sm bg-slate-50 border border-slate-200 rounded-xl p-3 max-h-48 overflow-y-auto"></ul>
@@ -207,107 +311,54 @@
               <ul id="serverBackups" class="space-y-1 text-sm bg-slate-50 border border-slate-200 rounded-xl p-3 max-h-48 overflow-y-auto"></ul>
             </div>
           </div>
-        </section>
+        </div>
 
-        <!-- Organisations-Verwaltung -->
-        <section class="border-t border-gray-200 pt-6">
-          <h3 class="font-semibold text-lg mb-3 text-primary">🏛️ Organisation</h3>
-          
+        <!-- Tab: Branding/Design -->
+        <div class="tab-content" data-tab-content="branding">
           <div class="space-y-4">
-            <!-- Aktuelle Organisation anzeigen -->
-            <div id="currentOrgInfo" class="bg-slate-50 border border-slate-200 rounded-xl p-4">
-              <div class="flex items-center justify-between">
-                <div>
-                  <div class="text-sm text-slate-500 mb-1">Aktuelle Organisation:</div>
-                  <div id="currentOrgName" class="font-semibold text-lg text-slate-900">-</div>
-                  <div id="currentOrgRole" class="text-xs text-slate-500 mt-1">-</div>
-                </div>
-                <button id="btnEditOrgName" class="px-3 py-2 rounded-xl bg-soft hover:bg-mid text-sm hidden">Umbenennen</button>
-              </div>
+            <div class="flex items-center justify-between mb-3">
+              <h3 class="font-semibold text-lg text-primary">🎨 Design anpassen</h3>
+              <span id="brandingRoleHint" class="text-xs text-slate-500"></span>
             </div>
             
-            <!-- Organisation umbenennen -->
-            <form id="formRenameOrg" class="hidden bg-blue-50 border border-blue-200 rounded-xl p-4 space-y-3">
+            <form id="brandingForm" class="grid grid-cols-1 md:grid-cols-2 gap-4">
               <label class="flex flex-col gap-1">
-                <span class="text-sm font-medium">Neuer Name</span>
-                <input id="inputOrgNewName" type="text" required class="px-3 py-2 rounded-xl border border-gray-400/60" placeholder="Mein Team">
+                <span class="text-sm font-medium">App-Name</span>
+                <input id="brandAppName" type="text" class="px-3 py-2 rounded-xl border border-gray-400/60" placeholder="tempio">
               </label>
-              <div class="flex gap-2">
-                <button type="submit" class="px-4 py-2 rounded-xl text-white btn-primary">Speichern</button>
-                <button type="button" id="btnCancelRenameOrg" class="px-4 py-2 rounded-xl bg-soft hover:bg-mid">Abbrechen</button>
+              <label class="flex flex-col gap-1">
+                <span class="text-sm font-medium">Logo URL (optional)</span>
+                <input id="brandLogoUrl" type="url" class="px-3 py-2 rounded-xl border border-gray-400/60" placeholder="https://.../logo.png">
+              </label>
+              <label class="flex flex-col gap-1">
+                <span class="text-sm font-medium">Primärfarbe</span>
+                <input id="brandPrimary" type="text" class="px-3 py-2 rounded-xl border border-gray-400/60" placeholder="#222">
+              </label>
+              <label class="flex flex-col gap-1">
+                <span class="text-sm font-medium">Akzentfarbe</span>
+                <input id="brandAccent" type="text" class="px-3 py-2 rounded-xl border border-gray-400/60" placeholder="#FF7043">
+              </label>
+              <label class="flex flex-col gap-1">
+                <span class="text-sm font-medium">Terms Label</span>
+                <input id="brandTermsLabel" type="text" class="px-3 py-2 rounded-xl border border-gray-400/60" placeholder="Termine">
+              </label>
+              <label class="flex flex-col gap-1">
+                <span class="text-sm font-medium">Bookings Label</span>
+                <input id="brandBookingsLabel" type="text" class="px-3 py-2 rounded-xl border border-gray-400/60" placeholder="Buchungen">
+              </label>
+              <label class="flex flex-col gap-1 md:col-span-2">
+                <span class="text-sm font-medium">Kategorien (kommagetrennt)</span>
+                <input id="brandCategories" type="text" class="px-3 py-2 rounded-xl border border-gray-400/60" placeholder="Workshop, Kurs, Event, Seminar">
+                <span class="text-xs text-slate-500">Diese Kategorien erscheinen beim Termin anlegen</span>
+              </label>
+              <div class="md:col-span-2 flex gap-2 items-center">
+                <button id="brandingSave" type="submit" class="px-4 py-2 rounded-xl text-white btn-primary">Speichern</button>
+                <span id="brandingInfo" class="text-xs text-slate-500"></span>
               </div>
             </form>
-            
-            <!-- Neue Organisation erstellen -->
-            <details class="bg-white border border-gray-200 rounded-xl">
-              <summary class="px-4 py-3 cursor-pointer hover:bg-gray-50 font-medium text-slate-700">
-                ➕ Neue Organisation erstellen
-              </summary>
-              <form id="formCreateOrg" class="p-4 pt-2 space-y-3 border-t border-gray-200">
-                <label class="flex flex-col gap-1">
-                  <span class="text-sm font-medium">Name der Organisation</span>
-                  <input id="inputOrgName" type="text" required class="px-3 py-2 rounded-xl border border-gray-400/60" placeholder="Meine neue Organisation">
-                </label>
-                <button type="submit" class="px-4 py-2 rounded-xl text-white btn-primary">Organisation erstellen</button>
-              </form>
-            </details>
-            
-            <!-- Einladungslink generieren (nur Owner/Admin) -->
-            <div id="inviteSection" class="hidden bg-emerald-50 border border-emerald-200 rounded-xl p-4 space-y-3">
-              <div class="font-medium text-slate-900">Mitglieder einladen</div>
-              <div class="text-sm text-slate-600">Teile diesen Link, um Mitglieder einzuladen:</div>
-              <div class="flex gap-2">
-                <input id="inviteLink" type="text" readonly class="flex-1 px-3 py-2 rounded-xl border border-gray-400/60 bg-white text-sm font-mono">
-                <button id="btnCopyInvite" type="button" class="px-4 py-2 rounded-xl bg-emerald-600 text-white hover:bg-emerald-700">📋 Kopieren</button>
-              </div>
-            </div>
+            <div id="brandingReadonly" class="hidden text-sm text-slate-600 bg-slate-50 border border-slate-200 rounded-xl p-3 mt-3"></div>
           </div>
-        </section>
-
-        <!-- Branding -->
-        <section class="border-t border-gray-200 pt-6">
-          <div class="flex items-center justify-between mb-3">
-            <h3 class="font-semibold text-lg text-primary">🎨 Branding</h3>
-            <span id="brandingRoleHint" class="text-xs text-slate-500"></span>
-          </div>
-          
-          <form id="brandingForm" class="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <label class="flex flex-col gap-1">
-              <span class="text-sm font-medium">App-Name</span>
-              <input id="brandAppName" type="text" class="px-3 py-2 rounded-xl border border-gray-400/60" placeholder="tempio">
-            </label>
-            <label class="flex flex-col gap-1">
-              <span class="text-sm font-medium">Logo URL (optional)</span>
-              <input id="brandLogoUrl" type="url" class="px-3 py-2 rounded-xl border border-gray-400/60" placeholder="https://.../logo.png">
-            </label>
-            <label class="flex flex-col gap-1">
-              <span class="text-sm font-medium">Primärfarbe</span>
-              <input id="brandPrimary" type="text" class="px-3 py-2 rounded-xl border border-gray-400/60" placeholder="#222">
-            </label>
-            <label class="flex flex-col gap-1">
-              <span class="text-sm font-medium">Akzentfarbe</span>
-              <input id="brandAccent" type="text" class="px-3 py-2 rounded-xl border border-gray-400/60" placeholder="#FF7043">
-            </label>
-            <label class="flex flex-col gap-1">
-              <span class="text-sm font-medium">Terms Label</span>
-              <input id="brandTermsLabel" type="text" class="px-3 py-2 rounded-xl border border-gray-400/60" placeholder="Termine">
-            </label>
-            <label class="flex flex-col gap-1">
-              <span class="text-sm font-medium">Bookings Label</span>
-              <input id="brandBookingsLabel" type="text" class="px-3 py-2 rounded-xl border border-gray-400/60" placeholder="Buchungen">
-            </label>
-            <label class="flex flex-col gap-1 md:col-span-2">
-              <span class="text-sm font-medium">Kategorien (kommagetrennt)</span>
-              <input id="brandCategories" type="text" class="px-3 py-2 rounded-xl border border-gray-400/60" placeholder="Workshop, Kurs, Event, Seminar">
-              <span class="text-xs text-slate-500">Diese Kategorien erscheinen beim Termin anlegen</span>
-            </label>
-            <div class="md:col-span-2 flex gap-2 items-center">
-              <button id="brandingSave" type="submit" class="px-4 py-2 rounded-xl text-white btn-primary">Speichern</button>
-              <span id="brandingInfo" class="text-xs text-slate-500"></span>
-            </div>
-          </form>
-          <div id="brandingReadonly" class="hidden text-sm text-slate-600 bg-slate-50 border border-slate-200 rounded-xl p-3 mt-3"></div>
-        </section>
+        </div>
       </div>
     </div>
   </div>
