@@ -114,28 +114,35 @@
   </div>
 
   <!-- Auth / Status -->
-  <section class="max-w-4xl mx-auto px-4 space-y-2">
-    <div class="flex flex-wrap gap-3 items-center text-sm">
+  <section class="max-w-4xl mx-auto px-4 py-3">
+    <div class="flex flex-wrap gap-4 items-center text-sm bg-white/90 border border-gray-200 rounded-xl px-4 py-3">
+      <!-- Status Badge -->
       <div class="flex items-center gap-2">
-        <span id="statusDot" class="font-bold text-emerald-600" aria-live="polite">O</span>
+        <span id="statusDot" class="text-xl" aria-live="polite">⚪</span>
+        <span id="autoBackupStatus" class="text-xs px-2 py-1 rounded-lg bg-blue-100 text-blue-700">💾 Auto-Backup</span>
+      </div>
+      
+      <!-- Sync Info -->
+      <div class="flex items-center gap-2">
         <span id="syncMeta" class="text-slate-700">Zuletzt aktualisiert: -</span>
       </div>
-      <div class="flex items-center gap-2">
-        <span id="autoBackupStatus" class="text-xs px-2 py-1 rounded-lg bg-emerald-100 text-emerald-700" title="Automatische Backups aktiv">🔄 Auto-Backup</span>
-      </div>
-      <div class="flex items-center gap-2 ml-auto">
-        <span id="authStatus" class="text-slate-700">Nicht eingeloggt</span>
-        <button id="btnLogout" type="button" class="px-3 py-2 rounded-xl bg-soft hover:bg-mid text-sm text-dark hidden">Abmelden</button>
+      
+      <!-- Auth Status & Actions -->
+      <div class="flex items-center gap-3 ml-auto">
+        <span id="authStatus" class="text-slate-700">Nicht angemeldet</span>
+        <form id="authForm" class="flex gap-2 items-center">
+          <input id="authEmail" type="email" required class="px-3 py-2 rounded-xl border border-gray-400/60 text-sm" placeholder="E-Mail für Magic Link">
+          <button type="submit" class="px-3 py-2 rounded-xl bg-emerald-600 text-white text-sm hover:bg-emerald-700">Anmelden</button>
+        </form>
+        <button id="btnLogout" type="button" class="px-3 py-2 rounded-xl bg-rose-500 hover:bg-rose-600 text-white text-sm hidden">Abmelden</button>
       </div>
     </div>
-    <div class="flex flex-wrap gap-3 items-center">
-      <form id="authForm" class="flex flex-wrap gap-2 items-center">
-        <input id="authEmail" type="email" required class="px-3 py-2 rounded-xl border border-gray-400/60" placeholder="E-Mail fuer Magic Link">
-        <button type="submit" class="px-3 py-2 rounded-xl bg-emerald-600 text-white text-sm">Anmelden</button>
-      </form>
+    
+    <!-- Team Select (nur wenn angemeldet) -->
+    <div class="mt-2 flex justify-end">
       <label class="flex items-center gap-2 text-sm">
-        Konto/Team
-        <select id="teamSelect" class="px-3 py-2 rounded-xl border border-gray-400/60 min-w-[140px]">
+        <span class="text-slate-600">Team:</span>
+        <select id="teamSelect" class="px-3 py-2 rounded-xl border border-gray-400/60 min-w-[180px]">
           <option value="">Lokaler Modus</option>
         </select>
       </label>

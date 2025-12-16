@@ -1553,7 +1553,6 @@ Stefanie`;
   /* ---------- Status / Auth UI ---------- */
   const authForm = qs("#authForm");
   const authStatus = qs("#authStatus");
-  const cloudStatus = qs("#cloudStatus");
   const inputEmail = qs("#authEmail");
   const btnLogout = qs("#btnLogout");
   const teamSelect = qs("#teamSelect");
@@ -1605,8 +1604,17 @@ Stefanie`;
       }
     }
     
-    if (authStatus) authStatus.textContent = state.user?.email ? `Angemeldet als ${state.user.email}` : "Nicht angemeldet";
-    if (cloudStatus) cloudStatus.textContent = isCloudReady(state) ? "Online-Speicherung: aktiv" : "Online-Speicherung: nicht angemeldet";
+    // Auth Status Update
+    if (authStatus) {
+      if (state.user?.email) {
+        authStatus.textContent = `✅ ${state.user.email}`;
+        authStatus.className = "text-emerald-700 font-medium";
+      } else {
+        authStatus.textContent = "Nicht angemeldet";
+        authStatus.className = "text-slate-600";
+      }
+    }
+    
     if (btnLogout) btnLogout.classList.toggle("hidden", !state.user);
     const mBtnLogout = qs("#m_btnLogout");
     const mBtnLogin = qs("#m_btnLogin");
