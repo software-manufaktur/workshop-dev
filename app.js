@@ -1474,10 +1474,7 @@ Stefanie`;
   });
   
   /* ---------- Settings ---------- */
-  qs("#btnSettings")?.addEventListener("click", (e) => {
-    console.log("Settings button clicked!");
-    openModal(modalSettings);
-  });
+  qs("#btnSettings")?.addEventListener("click", () => openModal(modalSettings));
   qs("#m_btnSettings")?.addEventListener("click", () => {
     closeMobileMenu();
     openModal(modalSettings);
@@ -1843,9 +1840,41 @@ END:VCALENDAR`;
   }
 
   /* ---------- Init ---------- */
+  /* ---------- Auto-Archive Past Events ---------- */
+  async function autoArchivePastEvents() {
+    try {
+      const state = await storage.getState();
+      const now = new Date();
+      let hasChanges = false;
+      
+      await updateState((draft) => {
+        (draft.slots || []).forEach(slot => {
+          if (!slot.archived && slot.ends_at) {
+            const endsAt = new Date(slot.ends_at);
+            if (endsAt < now) {
+              slot.archived = true;
+              hasChanges = true;
+            }
+          }
+        });
+        
+        if (hasChanges) {
+          draft.meta.lastSaveAt = new Date().toISOString();
+        }
+      });
+      
+      if (hasChanges && isDebug) {
+        console.log("Auto-archived past events");
+      }
+    } catch (err) {
+      logError("autoArchivePastEvents", err);
+    }
+  }
+
   async function init() {
     applyBranding(DEFAULT_BRANDING);
     await storage.getState();
+    await autoArchivePastEvents();
     await loadBrandingForOrg();
     if (supabaseClient) {
       await handleAuthCallback();
