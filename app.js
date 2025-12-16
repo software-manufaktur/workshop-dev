@@ -1120,8 +1120,13 @@
     const s = (state.slots || []).find((x) => x.id === id);
     if (!s) return;
     if (!formSlot) return;
+    
+    // Kategorien dynamisch laden
+    const categories = currentBranding.categories || DEFAULT_BRANDING.categories;
     if (slCat) {
-      if (CATS.includes(s.title)) {
+      slCat.innerHTML = categories.map(cat => `<option>${cat}</option>`).join('');
+      
+      if (categories.includes(s.title)) {
         slCat.value = s.title;
         if (rowTitleOther) rowTitleOther.style.display = "none";
         if (slTitleOther) slTitleOther.value = "";
