@@ -1986,7 +1986,11 @@ Stefanie`;
     fields.forEach(([el, val]) => {
       if (!el) return;
       el.value = val || "";
-      el.disabled = !canEdit;
+      if (el === brandPrimaryInput || el === brandAccentInput) {
+        el.disabled = true;
+      } else {
+        el.disabled = !canEdit;
+      }
     });
     if (brandingForm) brandingForm.classList.toggle("opacity-60", !canEdit);
     if (brandingRoleHint) brandingRoleHint.textContent = !state.user ? "Login erforderlich" : canEdit ? "Owner/Admin kann aendern" : "Nur Anzeige (Mitglied)";
@@ -2006,7 +2010,10 @@ Stefanie`;
         `;
       }
     }
-    if (brandingInfo) brandingInfo.textContent = navigator.onLine ? "" : "Offline: Branding wird nach Online-Status aktualisiert.";
+    if (brandingInfo) {
+      const offlineNote = navigator.onLine ? "" : "Offline: Branding wird nach Online-Status aktualisiert. ";
+      brandingInfo.textContent = `${offlineNote}Farbanpassungen sind in v2 vorgesehen.`;
+    }
   }
 
   authForm?.addEventListener("submit", async (e) => {
@@ -2038,16 +2045,11 @@ Stefanie`;
         showToast("Nur Owner/Admin dürfen Branding ändern", "error");
         return;
       }
-      const primary = normalizeColor(brandPrimaryInput?.value) || normalizeColor(DEFAULT_BRANDING.primaryColor);
-      const accent = normalizeColor(brandAccentInput?.value) || normalizeColor(DEFAULT_BRANDING.accentColor);
-      if (!primary || !accent) {
-        showToast("Ungültige Farbe. Bitte Hex (#RRGGBB) oder gültigen CSS-Farbwert verwenden.", "error");
-        return;
-      }
+      const activeBrand = { ...DEFAULT_BRANDING, ...(currentBranding || {}) };
       const payload = {
         appName: (brandAppNameInput?.value || "").trim() || DEFAULT_BRANDING.appName,
-        primaryColor: primary,
-        accentColor: accent,
+        primaryColor: activeBrand.primaryColor,
+        accentColor: activeBrand.accentColor,
         termsLabel: (brandTermsInput?.value || "").trim() || DEFAULT_BRANDING.termsLabel,
         bookingsLabel: (brandBookingsInput?.value || "").trim() || DEFAULT_BRANDING.bookingsLabel,
         logoUrl: (brandLogoInput?.value || "").trim() || null,
