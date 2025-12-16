@@ -62,12 +62,13 @@
     : null;
 
   const DEFAULT_BRANDING = {
-    appName: "Terminbuch",
+    appName: "tempio",
     primaryColor: "#222",
     accentColor: "#FF7043",
     termsLabel: "Termine",
     bookingsLabel: "Buchungen",
     logoUrl: null,
+    categories: ["Workshop", "Kurs", "Event", "Seminar", "Kindergeburtstag", "JGA", "Maedelsabend", "Weihnachtsfeier", "Private Gruppe", "Sonstiges"],
   };
 
   const stateDefaults = {
@@ -529,13 +530,14 @@
     logoUrl: row?.logo_url || null,
     termsLabel: row?.terms_label || null,
     bookingsLabel: row?.bookings_label || null,
+    categories: row?.categories ? (Array.isArray(row.categories) ? row.categories : JSON.parse(row.categories || '[]')) : null,
   });
 
   async function fetchOrgBranding(orgId) {
     if (!supabaseClient || !authUser || !orgId) return null;
     const { data, error } = await supabaseClient
       .from("org_settings")
-      .select("app_name, primary_color, accent_color, logo_url, terms_label, bookings_label, updated_at")
+      .select("app_name, primary_color, accent_color, logo_url, terms_label, bookings_label, categories, updated_at")
       .eq("org_id", orgId)
       .maybeSingle();
     if (error) {
@@ -584,6 +586,7 @@
       p_logo_url: branding.logoUrl || null,
       p_terms_label: branding.termsLabel || null,
       p_bookings_label: branding.bookingsLabel || null,
+      p_categories: branding.categories ? JSON.stringify(branding.categories) : null,
     };
     
     // Versuch RPC-Call
@@ -607,6 +610,7 @@
           logo_url: branding.logoUrl || null,
           terms_label: branding.termsLabel || null,
           bookings_label: branding.bookingsLabel || null,
+          categories: branding.categories ? JSON.stringify(branding.categories) : null,
         },
         { onConflict: "org_id" }
       )
@@ -1059,7 +1063,14 @@
     now.setMinutes(0, 0, 0);
     const s = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 17);
     const e = new Date(s.getTime() + 2 * 3600 * 1000);
-    if (slCat) slCat.value = "Workshop";
+    
+    // Kategorien dynamisch laden
+    const categories = currentBranding.categories || DEFAULT_BRANDING.categories;
+    if (slCat) {
+      slCat.innerHTML = categories.map(cat => `<option>${cat}</option>`).join('');
+      slCat.value = categories[0] || "Workshop";
+    }
+    
     if (rowTitleOther) rowTitleOther.style.display = "none";
     if (slTitleOther) slTitleOther.value = "";
     const cap = qs("#sl_capacity");
@@ -1799,6 +1810,9 @@ Stefanie`;
     const state = await storage.getState();
     const canEdit = canEditBranding(state);
     const activeBrand = { ...DEFAULT_BRANDING, ...(branding || {}) };
+    const categories = activeBrand.categories || DEFAULT_BRANDING.categories;
+    const categoriesInput = qs("#brandCategories");
+    
     const fields = [
       [brandAppNameInput, activeBrand.appName],
       [brandLogoInput, activeBrand.logoUrl || ""],
@@ -1806,6 +1820,7 @@ Stefanie`;
       [brandAccentInput, activeBrand.accentColor],
       [brandTermsInput, activeBrand.termsLabel],
       [brandBookingsInput, activeBrand.bookingsLabel],
+      [categoriesInput, categories.join(", ")],
     ];
     fields.forEach(([el, val]) => {
       if (!el) return;
@@ -1826,6 +1841,7 @@ Stefanie`;
           <div><strong>Terms Label:</strong> ${activeBrand.termsLabel}</div>
           <div><strong>Bookings Label:</strong> ${activeBrand.bookingsLabel}</div>
           <div><strong>Logo URL:</strong> ${activeBrand.logoUrl || "nicht gesetzt"}</div>
+          <div><strong>Kategorien:</strong> ${categories.join(", ")}</div>
         `;
       }
     }
@@ -1864,6 +1880,7 @@ Stefanie`;
       termsLabel: (brandTermsInput?.value || "").trim() || DEFAULT_BRANDING.termsLabel,
       bookingsLabel: (brandBookingsInput?.value || "").trim() || DEFAULT_BRANDING.bookingsLabel,
       logoUrl: (brandLogoInput?.value || "").trim() || null,
+      categories: (qs("#brandCategories")?.value || "").split(",").map(c => c.trim()).filter(Boolean),
     };
     try {
       const saved = await upsertBranding(state.activeOrgId, payload);

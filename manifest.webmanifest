@@ -1,6 +1,6 @@
 {
-  "name": "Terminbuch",
-  "short_name": "Terminbuch",
+  "name": "tempio",
+  "short_name": "tempio",
   "description": "Offline-first Termin- und Buchungsverwaltung",
   "start_url": "./",
   "scope": "./",

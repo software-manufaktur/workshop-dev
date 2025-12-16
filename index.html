@@ -4,7 +4,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Terminbuch</title>
+  <title>tempio</title>
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='20' fill='%23222'/%3E%3Crect x='15' y='25' width='70' height='60' rx='5' fill='%23fff'/%3E%3Crect x='15' y='25' width='70' height='15' rx='5' fill='%23FF7043'/%3E%3Ccircle cx='35' cy='55' r='4' fill='%23222'/%3E%3Ccircle cx='50' cy='55' r='4' fill='%23222'/%3E%3Ccircle cx='65' cy='55' r='4' fill='%23222'/%3E%3Ccircle cx='35' cy='70' r='4' fill='%23222'/%3E%3Ccircle cx='50' cy='70' r='4' fill='%23FF7043'/%3E%3Ccircle cx='65' cy='70' r='4' fill='%23222'/%3E%3C/svg%3E">
   <script src="https://cdn.tailwindcss.com"></script>
   <script>
@@ -27,7 +27,7 @@
   <!-- iOS PWA -->
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
-  <meta name="apple-mobile-web-app-title" content="Terminbuch">
+  <meta name="apple-mobile-web-app-title" content="tempio">
   <link rel="apple-touch-icon" href="static/icons/icon-192.png">
 
   <style>
@@ -68,7 +68,7 @@
     <!-- Logo und Titel -->
     <div class="flex items-center justify-center gap-3 mb-6">
       <img id="brandLogo" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='20' fill='%23222'/%3E%3Crect x='15' y='25' width='70' height='60' rx='5' fill='%23fff'/%3E%3Crect x='15' y='25' width='70' height='15' rx='5' fill='%23FF7043'/%3E%3Ccircle cx='35' cy='55' r='4' fill='%23222'/%3E%3Ccircle cx='50' cy='55' r='4' fill='%23222'/%3E%3Ccircle cx='65' cy='55' r='4' fill='%23222'/%3E%3Ccircle cx='35' cy='70' r='4' fill='%23222'/%3E%3Ccircle cx='50' cy='70' r='4' fill='%23FF7043'/%3E%3Ccircle cx='65' cy='70' r='4' fill='%23222'/%3E%3C/svg%3E" alt="Logo" class="h-12 w-auto hidden">
-      <h1 id="brandTitle" class="text-2xl font-semibold text-primary">Terminbuch</h1>
+      <h1 id="brandTitle" class="text-2xl font-semibold text-primary">tempio</h1>
     </div>
     
     <!-- Aktionen -->
@@ -219,7 +219,7 @@
           <form id="brandingForm" class="grid grid-cols-1 md:grid-cols-2 gap-4">
             <label class="flex flex-col gap-1">
               <span class="text-sm font-medium">App-Name</span>
-              <input id="brandAppName" type="text" class="px-3 py-2 rounded-xl border border-gray-400/60" placeholder="Terminbuch">
+              <input id="brandAppName" type="text" class="px-3 py-2 rounded-xl border border-gray-400/60" placeholder="tempio">
             </label>
             <label class="flex flex-col gap-1">
               <span class="text-sm font-medium">Logo URL (optional)</span>
@@ -240,6 +240,11 @@
             <label class="flex flex-col gap-1">
               <span class="text-sm font-medium">Bookings Label</span>
               <input id="brandBookingsLabel" type="text" class="px-3 py-2 rounded-xl border border-gray-400/60" placeholder="Buchungen">
+            </label>
+            <label class="flex flex-col gap-1 md:col-span-2">
+              <span class="text-sm font-medium">Kategorien (kommagetrennt)</span>
+              <input id="brandCategories" type="text" class="px-3 py-2 rounded-xl border border-gray-400/60" placeholder="Workshop, Kurs, Event, Seminar">
+              <span class="text-xs text-slate-500">Diese Kategorien erscheinen beim Termin anlegen</span>
             </label>
             <div class="md:col-span-2 flex gap-2 items-center">
               <button id="brandingSave" type="submit" class="px-4 py-2 rounded-xl text-white btn-primary">Speichern</button>
@@ -317,12 +322,7 @@
         <label class="flex flex-col gap-1 md:col-span-2">
           <span class="text-sm">Kategorie</span>
           <select id="sl_category" class="px-3 py-2 rounded-xl border border-gray-400/60">
-            <option>Workshop</option>
-            <option>Kindergeburtstag</option>
-            <option>JGA</option>
-            <option>Maedelsabend</option>
-            <option>Weihnachtsfeier</option>
-            <option>Sonstiges</option>
+            <!-- Kategorien werden dynamisch geladen -->
           </select>
         </label>
         <label class="flex flex-col gap-1 md:col-span-2" id="row_title_other" style="display:none">
