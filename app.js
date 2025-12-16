@@ -707,6 +707,9 @@
   modalBackupImport?.addEventListener("click", (e) => {
     if (e.target === modalBackupImport) closeModal(modalBackupImport);
   });
+  modalSettings?.addEventListener("click", (e) => {
+    if (e.target === modalSettings) closeModal(modalSettings);
+  });
 
   /* ---------- Domain helpers ---------- */
   const CATS = ["Workshop", "Kindergeburtstag", "JGA", "Maedelsabend", "Weihnachtsfeier", "Kurs", "Event", "Seminar", "Private Gruppe", "Sonstiges"];
