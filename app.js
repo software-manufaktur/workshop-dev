@@ -1642,10 +1642,14 @@ Stefanie`;
   
   /* ---------- Settings ---------- */
   function setupSettingsListeners() {
-    qs("#btnSettings")?.addEventListener("click", () => openModal(modalSettings));
+    qs("#btnSettings")?.addEventListener("click", () => {
+      openModal(modalSettings);
+      updateOrgInfo(); // Lade Org-Info wenn Settings geöffnet werden
+    });
     qs("#m_btnSettings")?.addEventListener("click", () => {
       closeMobileMenu();
       openModal(modalSettings);
+      updateOrgInfo(); // Lade Org-Info wenn Settings geöffnet werden
     });
   }
   
@@ -1996,26 +2000,37 @@ Stefanie`;
     const btnEditOrgName = qs("#btnEditOrgName");
     const inviteSection = qs("#inviteSection");
     
-    if (!currentOrgInfo || !state.activeOrgId) return;
+    if (!currentOrgInfo) return;
     
-    const org = state.orgs.find(o => o.id === state.activeOrgId);
-    if (!org) {
-      currentOrgName.textContent = "Keine Organisation ausgewählt";
-      currentOrgRole.textContent = "";
-      btnEditOrgName.classList.add("hidden");
+    // State aus Storage laden
+    const state = await storage.getState();
+    
+    if (!state.activeOrgId || !state.orgs?.length) {
+      if (currentOrgName) currentOrgName.textContent = "Keine Organisation ausgewählt";
+      if (currentOrgRole) currentOrgRole.textContent = "";
+      btnEditOrgName?.classList.add("hidden");
       inviteSection?.classList.add("hidden");
       return;
     }
     
-    currentOrgName.textContent = org.name;
-    currentOrgRole.textContent = `Rolle: ${org.role === 'owner' ? 'Eigentümer' : org.role === 'admin' ? 'Administrator' : 'Mitglied'}`;
+    const org = state.orgs.find(o => o.id === state.activeOrgId);
+    if (!org) {
+      if (currentOrgName) currentOrgName.textContent = "Keine Organisation ausgewählt";
+      if (currentOrgRole) currentOrgRole.textContent = "";
+      btnEditOrgName?.classList.add("hidden");
+      inviteSection?.classList.add("hidden");
+      return;
+    }
+    
+    if (currentOrgName) currentOrgName.textContent = org.name;
+    if (currentOrgRole) currentOrgRole.textContent = `Rolle: ${org.role === 'owner' ? 'Eigentümer' : org.role === 'admin' ? 'Administrator' : 'Mitglied'}`;
     
     // Show rename button only for owner/admin
     if (org.role === 'owner' || org.role === 'admin') {
-      btnEditOrgName.classList.remove("hidden");
+      btnEditOrgName?.classList.remove("hidden");
       inviteSection?.classList.remove("hidden");
     } else {
-      btnEditOrgName.classList.add("hidden");
+      btnEditOrgName?.classList.add("hidden");
       inviteSection?.classList.add("hidden");
     }
   }
@@ -2314,15 +2329,6 @@ END:VCALENDAR`;
     
     // Check for invite code in URL
     await checkInviteCode();
-    
-    // First-Run: Zeige QuickStart beim ersten App-Start
-    const hasSeenQuickStart = await storage.getKV("hasSeenQuickStart");
-    if (!hasSeenQuickStart) {
-      setTimeout(() => {
-        openModal(modalQuickStart);
-        storage.setKV("hasSeenQuickStart", true);
-      }, 800); // Kurze Verzögerung damit UI geladen ist
-    }
   }
 
   document.addEventListener("DOMContentLoaded", init);
