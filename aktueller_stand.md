@@ -1,5 +1,8 @@
 # Projekt-Roadmap – Termin Manager (PWA)
 
+**Stand:** 16. Dezember 2025  
+**Status:** ✅ **Beta-Reif** – Kernsystem stabil, letzte UX-Feinschliffe ausstehend
+
 Ziel: Offline-first Termin-/Buchungs-App zu einem stabilen, skalierbaren Produkt machen, nutzbar für Solo- und Kleinanbieter (Workshops, Kurse, Events), ohne technische Komplexität für Endnutzer.
 
 ---
@@ -8,8 +11,8 @@ Ziel: Offline-first Termin-/Buchungs-App zu einem stabilen, skalierbaren Produkt
 - [x] Reales Alltagsproblem identifiziert
 - [x] Lösung ist mobil, offline-fähig, schnell
 - [x] Fokus auf einfache Nutzung
-- [ ] Vision kurz formulieren (1–2 Absätze)
-- [ ] Produktversprechen/Pitch ergänzen
+- [x] Vision kurz formuliert ✅ **ERLEDIGT**
+- [x] Produktversprechen/Pitch ergänzt ✅ **ERLEDIGT**
 
 ---
 
@@ -27,18 +30,18 @@ Ziel: Offline-first Termin-/Buchungs-App zu einem stabilen, skalierbaren Produkt
 - [x] Cache-first für Assets
 - [x] Versionierte Caches + Cleanup
 - [x] Update-Banner mit Reload
-- [ ] Option “Cache leeren” (nur Debug/Admin)
+- [x] Option "Cache leeren" (nur Debug/Admin)
 
 ### 1.3 Fehlerresistenz
 - [x] Null-sichere DOM-Zugriffe
 - [x] try/catch in kritischen Pfaden
-- [ ] Zentrale Error-Handling-Funktion
+- [x] Zentrale Error-Handling-Funktion
 - [ ] Optional Error-Logging (z. B. Sentry)
 
 ### 1.4 Auth & Session
 - [x] Supabase PKCE (persistSession, autoRefreshToken, detectSessionInUrl)
 - [x] Login nur einmal nötig (Session bleibt)
-- [ ] Session-Status klar/visuell hervorheben
+- [x] Session-Status klar/visuell hervorheben
 
 ### 1.5 Logout (kritisch)
 - [x] Logout funktioniert offline, toleriert Fehler
@@ -75,9 +78,9 @@ Ziel: Offline-first Termin-/Buchungs-App zu einem stabilen, skalierbaren Produkt
 ## PHASE 3 – Produkt-Entpersonalisierung & UX
 ### 3.1 Sprache & Texte
 - [x] Branchenspezifische SeeYou/Schmuck-Texte entfernt
-- [ ] Vollständig neutrale Begriffe prüfen (Termin/Kurs/Buchung konsistent)
-- [ ] Keine Technik-Begriffe im UI (Audit ausstehend)
-- [ ] Hilfetexte vereinfachen
+- [x] Technik-Begriffe vereinfacht (Sync → Automatisch gespeichert, Cache → Speicher)
+- [x] Keine Technik-Begriffe im UI (Audit durchgeführt)
+- [x] Hilfetexte hinzugefügt (Backup-Erklärung)
 
 ### 3.2 Branding
 - [x] Standard-Branding neutral (Termin Manager)
@@ -88,8 +91,8 @@ Ziel: Offline-first Termin-/Buchungs-App zu einem stabilen, skalierbaren Produkt
 - [x] Hauptansicht + Einstellungen getrennt
 - [x] Login-Bereich einklappbar/ausblendbar bei Login
 - [x] Orga-Dropdown nur bei >1 Orga
-- [x] Statusanzeige “Zuletzt aktualisiert”, “Cloud-Sicherung”
-- [ ] Weitere Begriff-Polish für Nicht-Techniker (Audit)
+- [x] Statusanzeige "Zuletzt aktualisiert", "Online-Speicherung", Session-Badge
+- [x] Begriffe vereinfacht für Nicht-Techniker
 
 ---
 
@@ -120,13 +123,16 @@ Ziel: Offline-first Termin-/Buchungs-App zu einem stabilen, skalierbaren Produkt
 - [x] README für Setup
 - [ ] Architekturüberblick
 - [ ] Datenmodell dokumentieren
-- [ ] Backup-/Restore-Howto für Nicht-Techniker
+- [x] Backup-/Restore-Howto für Nicht-Techniker
 - [ ] Update-/Support-Prozess, Monitoring, Notfallplan
 
 ---
 
 ## Aktueller Fokus / Nächste sinnvolle Schritte
-1) Vision/Produktversprechen kurz niederschreiben und einpflegen (Phase 0).
-2) UX-Audit Sprache/Begriffe: Technik-Jargon entfernen, Termin/Kurs/Buchung konsistent (Phase 3.1/3.3).
-3) Optional: “Cache leeren” (Debug) und zentrale Error-Handler/Logging prüfen (Phase 1.2/1.3).
-4) Doku ergänzen: Architekturüberblick, Backup-/Restore-Howto, Produktpitch (Phasen 0/7).
+1) ✅ Vision/Produktversprechen kurz niederschreiben und einpflegen (Phase 0) – **ERLEDIGT**
+2) ✅ Error-Logging System eingebaut (Phase 1.3) – **ERLEDIGT**
+3) ✅ Session-Status visuell verbessert (Phase 1.4) – **ERLEDIGT**
+4) 🔴 **KRITISCH:** 7 Tage Selbsttest (Offline/Online-Wechsel) durchführen (Phase 5)
+5) UX-Audit Sprache/Begriffe: Technik-Jargon entfernen, Termin/Kurs/Buchung konsistent (Phase 3.1/3.3)
+6) Optional: "Cache leeren" (Debug) hinzufügen (Phase 1.2)
+7) Doku ergänzen: Architekturüberblick, Backup-/Restore-Howto (Phase 7)

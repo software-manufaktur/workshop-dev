@@ -1,4 +1,4 @@
-const CACHE_VERSION = "v2.1";
+const CACHE_VERSION = "v2.2";
 const STATIC_CACHE = `workshop-static-${CACHE_VERSION}`;
 const RUNTIME_CACHE = `workshop-runtime-${CACHE_VERSION}`;
 

@@ -2,11 +2,12 @@
 (function () {
   "use strict";
 
-  const APP_VERSION = "1.2.0";
+  const APP_VERSION = "1.3.0";
   const DB_NAME = "workshop-app";
   const DB_VERSION = 3;
   const MAX_LOCAL_BACKUPS = 10;
   const SYNC_DEBOUNCE_MS = 1200;
+  const BRANDING_CACHE_PREFIX = "branding:";
 
   const qs = (s) => document.querySelector(s);
   const qsa = (s) => Array.from(document.querySelectorAll(s));
@@ -19,6 +20,23 @@
   const pad2 = (n) => String(n).padStart(2, "0");
   const todayKey = () => new Date().toISOString().slice(0, 10);
   const isDebug = new URLSearchParams(location.search).get("debug") === "1";
+
+  // Zentrales Error-Logging
+  const errors = [];
+  function logError(context, error, data = {}) {
+    const entry = {
+      timestamp: new Date().toISOString(),
+      context,
+      message: error?.message || String(error),
+      stack: error?.stack,
+      data,
+    };
+    errors.push(entry);
+    if (errors.length > 50) errors.shift();
+    console.error(`[${context}]`, error, data);
+    // Optional: Sentry/externe Logging-API hier integrieren
+    // if (window.Sentry) Sentry.captureException(error, { tags: { context }, extra: data });
+  }
 
   const supabaseConfig = window.APP_CONFIG || {};
   const supabaseReady =
@@ -36,9 +54,15 @@
         },
       })
     : null;
-  const brandName = supabaseConfig.BRAND_NAME || "Termin Manager";
-  const brandColor = supabaseConfig.BRAND_COLOR || "#AF9778";
-  const brandLogo = supabaseConfig.BRAND_LOGO || "static/logo.png";
+
+  const DEFAULT_BRANDING = {
+    appName: "Terminbuch",
+    primaryColor: "#222",
+    accentColor: "#FF7043",
+    termsLabel: "Termine",
+    bookingsLabel: "Buchungen",
+    logoUrl: null,
+  };
 
   const stateDefaults = {
     slots: [],
@@ -67,10 +91,14 @@
   let syncRetry = 0;
   let updateWaitingWorker = null;
   let authUser = null;
+  let currentBranding = { ...DEFAULT_BRANDING };
   const ctx = { currentSlotId: null, currentBookingId: null, importPreview: null };
   const READ_VERIFY = false;
 
   const isUuid = (val) => typeof val === "string" && /^[0-9a-fA-F-]{36}$/.test(val);
+  const brandingKey = (orgId) => `${BRANDING_CACHE_PREFIX}${orgId || "default"}`;
+  const getOrgRole = (state, orgId) => (state.orgs || []).find((o) => o.id === (orgId || state.activeOrgId))?.role || null;
+  const canEditBranding = (state) => ["owner", "admin"].includes(getOrgRole(state, state.activeOrgId));
   const normalizeActiveOrgId = (id, orgs = []) => {
     if (!isUuid(id)) return null;
     if (orgs.length && !orgs.find((o) => o.id === id)) return orgs[0]?.id || null;
@@ -78,17 +106,39 @@
   };
   const isCloudReady = (state) => Boolean(supabaseClient && authUser && isUuid(state?.activeOrgId));
 
-  function applyBranding() {
-    document.title = brandName;
+  function applyBranding(branding = DEFAULT_BRANDING) {
+    currentBranding = { ...DEFAULT_BRANDING, ...(branding || {}) };
+    const root = document.documentElement;
+    root.style.setProperty("--primary", currentBranding.primaryColor || DEFAULT_BRANDING.primaryColor);
+    root.style.setProperty("--accent", currentBranding.accentColor || DEFAULT_BRANDING.accentColor);
+    if (currentBranding.bg) root.style.setProperty("--bg", currentBranding.bg);
+    if (currentBranding.text) root.style.setProperty("--text", currentBranding.text);
+
+    document.title = currentBranding.appName;
     const titleEl = qs("#brandTitle");
     const logoEl = qs("#brandLogo");
     if (titleEl) {
-      titleEl.textContent = brandName;
-      titleEl.style.color = brandColor;
+      titleEl.textContent = currentBranding.appName;
+      titleEl.style.color = currentBranding.primaryColor || DEFAULT_BRANDING.primaryColor;
     }
-    if (logoEl && brandLogo) logoEl.src = brandLogo;
+    if (logoEl) {
+      if (currentBranding.logoUrl) {
+        logoEl.src = currentBranding.logoUrl;
+        logoEl.classList.remove("hidden");
+      } else {
+        logoEl.src = "static/logo.png";
+        logoEl.classList.remove("hidden");
+      }
+    }
     const metaTheme = document.querySelector("meta[name='theme-color']");
-    if (metaTheme) metaTheme.setAttribute("content", brandColor);
+    if (metaTheme) metaTheme.setAttribute("content", currentBranding.primaryColor || DEFAULT_BRANDING.primaryColor);
+    const appleTitle = document.querySelector("meta[name='apple-mobile-web-app-title']");
+    if (appleTitle) appleTitle.setAttribute("content", currentBranding.appName || DEFAULT_BRANDING.appName);
+    qsa("[data-label-terms-action]").forEach((el) => (el.textContent = `${currentBranding.termsLabel} anlegen`));
+    const modalTerms = qs("[data-label-terms-modal]");
+    if (modalTerms) modalTerms.textContent = `${currentBranding.termsLabel} anlegen / bearbeiten`;
+    const modalBookingTitle = qs("[data-label-bookings]");
+    if (modalBookingTitle) modalBookingTitle.textContent = currentBranding.bookingsLabel;
   }
 
   /* ---------- IndexedDB Layer ---------- */
@@ -127,6 +177,23 @@
   }
   async function writeStateToDb(state) {
     return withStore("kv", "readwrite", (store) => store.put({ key: "state", value: state }));
+  }
+  async function loadBrandingCache(orgId) {
+    try {
+      const key = brandingKey(orgId);
+      return withStore("kv", "readonly", (store) => store.get(key)).then((req) => req?.result?.value || null);
+    } catch (err) {
+      logError("loadBrandingCache", err, { orgId });
+      return null;
+    }
+  }
+  async function saveBrandingCache(orgId, branding) {
+    try {
+      const key = brandingKey(orgId);
+      await withStore("kv", "readwrite", (store) => store.put({ key, value: branding }));
+    } catch (err) {
+      logError("saveBrandingCache", err, { orgId });
+    }
   }
 
   async function migrateFromLocalStorage() {
@@ -351,6 +418,7 @@
       },
       { skipSync: true, skipSnapshot: true }
     );
+    await loadBrandingForOrg();
   }
 
   async function updateUserInState(user) {
@@ -366,9 +434,91 @@
     renderDebug();
   }
 
+  const normalizeBrandingRow = (row) => ({
+    appName: row?.app_name || null,
+    primaryColor: row?.primary_color || null,
+    accentColor: row?.accent_color || null,
+    logoUrl: row?.logo_url || null,
+    termsLabel: row?.terms_label || null,
+    bookingsLabel: row?.bookings_label || null,
+  });
+
+  async function fetchOrgBranding(orgId) {
+    if (!supabaseClient || !authUser || !orgId) return null;
+    const { data, error } = await supabaseClient
+      .from("org_settings")
+      .select("app_name, primary_color, accent_color, logo_url, terms_label, bookings_label, updated_at")
+      .eq("org_id", orgId)
+      .maybeSingle();
+    if (error) {
+      if (error.code !== "PGRST116") console.warn("Branding fetch failed", error);
+      return null;
+    }
+    return data ? normalizeBrandingRow(data) : null;
+  }
+
+  async function loadBrandingForOrg(orgId) {
+    const state = await storage.getState();
+    const targetOrg = orgId || state.activeOrgId || null;
+    let branding = null;
+    if (navigator.onLine && supabaseClient && authUser && targetOrg) {
+      try {
+        const remote = await fetchOrgBranding(targetOrg);
+        if (remote) {
+          branding = { ...remote };
+          await saveBrandingCache(targetOrg, { ...DEFAULT_BRANDING, ...remote });
+        }
+      } catch (err) {
+        console.warn("Branding remote load failed", err);
+      }
+    }
+    if (!branding && targetOrg) branding = await loadBrandingCache(targetOrg);
+    if (!branding) branding = await loadBrandingCache(null);
+    const merged = { ...DEFAULT_BRANDING, ...(branding || {}) };
+    applyBranding(merged);
+    await saveBrandingCache(targetOrg, merged);
+    renderBrandingUI(merged);
+    return merged;
+  }
+
+  async function upsertBranding(orgId, branding) {
+    if (!supabaseClient || !authUser || !orgId) throw new Error("Login erforderlich");
+    const payload = {
+      p_org_id: orgId,
+      p_app_name: branding.appName || null,
+      p_primary_color: branding.primaryColor || null,
+      p_accent_color: branding.accentColor || null,
+      p_logo_url: branding.logoUrl || null,
+      p_terms_label: branding.termsLabel || null,
+      p_bookings_label: branding.bookingsLabel || null,
+    };
+    const { data, error } = await supabaseClient.rpc("set_org_settings", payload);
+    if (!error && data) return normalizeBrandingRow(data);
+    if (error) console.warn("RPC set_org_settings fehlgeschlagen, fallback auf upsert", error);
+    const { data: upserted, error: upsertErr } = await supabaseClient
+      .from("org_settings")
+      .upsert(
+        {
+          org_id: orgId,
+          app_name: branding.appName || null,
+          primary_color: branding.primaryColor || null,
+          accent_color: branding.accentColor || null,
+          logo_url: branding.logoUrl || null,
+          terms_label: branding.termsLabel || null,
+          bookings_label: branding.bookingsLabel || null,
+        },
+        { onConflict: "org_id" }
+      )
+      .select()
+      .maybeSingle();
+    if (upsertErr) throw upsertErr;
+    return upserted ? normalizeBrandingRow(upserted) : null;
+  }
+
   async function pullLatestFromServer() {
     const state = await storage.getState();
     if (!isCloudReady(state)) return;
+    await loadBrandingForOrg(state.activeOrgId);
     const { data, error } = await supabaseClient
       .from("workshop_states")
       .select("*")
@@ -523,6 +673,7 @@
   const modalSlots = qs("#modalSlots");
   const modalConfirmDelete = qs("#modalConfirmDelete");
   const modalBackupImport = qs("#modalBackupImport");
+  const modalBackupHelp = qs("#modalBackupHelp");
   function openModal(el) {
     if (!el) return;
     [modalBooking, modalSlots, modalBackupImport].forEach((m) => {
@@ -539,11 +690,12 @@
     el.classList.remove("flex");
   }
   document.addEventListener("keydown", (e) => {
-    if (e.key === "Escape") [modalBooking, modalSlots, modalConfirmDelete, modalBackupImport].forEach((m) => closeModal(m));
+    if (e.key === "Escape") [modalBooking, modalSlots, modalConfirmDelete, modalBackupImport, modalBackupHelp].forEach((m) => closeModal(m));
   });
   qsa("[data-close='booking']").forEach((b) => b.addEventListener("click", () => closeModal(modalBooking)));
   qsa("[data-close='slots']").forEach((b) => b.addEventListener("click", () => closeModal(modalSlots)));
   qsa("[data-close='backup']").forEach((b) => b.addEventListener("click", () => closeModal(modalBackupImport)));
+  qsa("[data-close='backuphelp']").forEach((b) => b.addEventListener("click", () => closeModal(modalBackupHelp)));
   modalSlots?.addEventListener("click", (e) => {
     if (e.target === modalSlots) closeModal(modalSlots);
   });
@@ -582,6 +734,7 @@
     render(state);
     renderStatus();
     renderAuth();
+    await renderBrandingUI();
     renderLocalBackups();
     renderServerBackups();
     renderDebug();
@@ -596,11 +749,12 @@
   }
 
   function renderBookingsMini(slotId, state) {
+    const bookingLabel = currentBranding.bookingsLabel || DEFAULT_BRANDING.bookingsLabel;
     const list = bookingsBySlot(slotId, state);
-    if (!list.length) return `<div class="text-xs text-slate-500 mt-2">Noch keine Buchungen.</div>`;
+    if (!list.length) return `<div class="text-xs text-slate-500 mt-2">Noch keine ${bookingLabel}.</div>`;
     return `
       <div class="mt-2 text-sm">
-        <div class="font-medium mb-1">Buchungen (Tippen zum Bearbeiten/Loeschen):</div>
+        <div class="font-medium mb-1">${bookingLabel} (Tippen zum Bearbeiten/Loeschen):</div>
         <ul class="space-y-1">
           ${list
             .map((b) => {
@@ -619,6 +773,8 @@
     memoryState = state;
     const search = (qs("#search")?.value || "").toLowerCase().trim();
     const filter = qs("#filterStatus")?.value || "";
+    const termsLabel = currentBranding.termsLabel || DEFAULT_BRANDING.termsLabel;
+    const bookingsLabel = currentBranding.bookingsLabel || DEFAULT_BRANDING.bookingsLabel;
     const all = (state.slots || []).map((s) => ({ archived: false, ...s }));
     let active = all.filter((s) => !s.archived).sort((a, b) => new Date(a.starts_at) - new Date(b.starts_at));
     let archived = all.filter((s) => s.archived).sort((a, b) => new Date(a.starts_at) - new Date(b.starts_at));
@@ -650,18 +806,18 @@
           ? "bg-amber-400"
           : "bg-emerald-500";
       const actions = `
-        ${s.archived ? "" : `<button type="button" class="px-3 py-2 rounded-xl text-sm" style="background:#AF9778;color:white" data-open-booking="${s.id}">Buchung</button>`}
-        <button type="button" class="px-3 py-2 rounded-xl bg-gray-100 hover:bg-gray-200 text-sm" data-edit-slot="${s.id}">Termin bearbeiten</button>
+        ${s.archived ? "" : `<button type="button" class="px-3 py-2 rounded-xl text-sm" style="background:var(--primary);color:white" data-open-booking="${s.id}">${bookingsLabel}</button>`}
+        <button type="button" class="px-3 py-2 rounded-xl bg-gray-100 hover:bg-gray-200 text-sm" data-edit-slot="${s.id}">${termsLabel} bearbeiten</button>
         <button type="button" class="px-3 py-2 rounded-xl ${s.archived ? "bg-emerald-100 hover:bg-emerald-200" : "bg-slate-100 hover:bg-slate-200"} text-sm" data-toggle-archive="${s.id}" data-flag="${!s.archived}">${s.archived ? "Aus Archiv holen" : "Archivieren"}</button>
         <button type="button" class="px-3 py-2 rounded-xl bg-gray-100 hover:bg-gray-200 text-sm" data-ics="${s.id}">Kalender (.ics)</button>
-        <button type="button" class="px-3 py-2 rounded-xl bg-rose-100 hover:bg-rose-200 text-sm" data-delete-slot="${s.id}">Termin loeschen</button>
+        <button type="button" class="px-3 py-2 rounded-xl bg-rose-100 hover:bg-rose-200 text-sm" data-delete-slot="${s.id}">${termsLabel} loeschen</button>
       `;
       return `
         <div class="rounded-2xl p-4 bg-white/85 backdrop-blur border border-gray-200 shadow-sm">
           <div class="flex items-start justify-between gap-3">
             <div class="min-w-0">
               <div class="text-sm text-slate-500">${statusBadge(status, left)}</div>
-              <div class="font-semibold text-[20px] sm:text-base leading-snug break-words" style="color:#AF9778">${s.title}</div>
+              <div class="font-semibold text-[20px] sm:text-base leading-snug break-words" style="color:var(--primary)">${s.title}</div>
               <div class="text-sm">${fmtDate(s.starts_at)} - ${fmtDate(s.ends_at)}</div>
               <div class="text-sm mt-1">Kapazitaet: ${s.capacity} - Gebucht: ${booked} - Frei: ${left}</div>
               <div class="h-2 mt-2 bg-gray-100 rounded-full overflow-hidden"><div class="h-2 ${barColor}" style="width:${bar}%"></div></div>
@@ -698,7 +854,7 @@
           : ""
       }`;
     } catch (err) {
-      console.warn("Render error", err);
+      logError("render", err);
     }
     bindDynamicListHandlers();
   }
@@ -735,7 +891,7 @@
             editBooking(target.dataset.booking);
           }
         } catch (err) {
-          console.warn("Button action failed", err);
+          logError("bindDynamicListHandlers", err, { action: target.dataset });
           showToast("Aktion fehlgeschlagen", "error");
         }
       });
@@ -1084,6 +1240,53 @@ Stefanie`;
     closeMobileMenu();
     handleExportBackup();
   });
+  
+  /* ---------- Cache Clear / Reset ---------- */
+  qs("#btnClearCache")?.addEventListener("click", handleClearCache);
+  qs("#m_btnClearCache")?.addEventListener("click", () => {
+    closeMobileMenu();
+    handleClearCache();
+  });
+  
+  /* ---------- Backup Help ---------- */
+  qs("#btnBackupHelp")?.addEventListener("click", (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    openModal(modalBackupHelp);
+  });
+  
+  async function handleClearCache() {
+    if (!confirm("⚠️ Speicher zurücksetzen?\n\nAlle lokalen Daten und Einstellungen werden gelöscht.\nNur fortfahren, wenn du ein Backup hast!\n\nOnline gespeicherte Daten bleiben erhalten.")) {
+      return;
+    }
+    try {
+      // IndexedDB löschen
+      await new Promise((resolve, reject) => {
+        const req = indexedDB.deleteDatabase(DB_NAME);
+        req.onsuccess = resolve;
+        req.onerror = () => reject(new Error("DB-Löschung fehlgeschlagen"));
+      });
+      
+      // Service Worker Cache löschen
+      if ('caches' in window) {
+        const keys = await caches.keys();
+        await Promise.all(keys.map(key => caches.delete(key)));
+      }
+      
+      // Service Worker deregistrieren
+      if ('serviceWorker' in navigator) {
+        const registrations = await navigator.serviceWorker.getRegistrations();
+        await Promise.all(registrations.map(reg => reg.unregister()));
+      }
+      
+      showToast("✅ Speicher gelöscht - Seite wird neu geladen", "success");
+      setTimeout(() => window.location.reload(), 1500);
+    } catch (err) {
+      logError("handleClearCache", err);
+      showToast("Fehler beim Zurücksetzen: " + err.message, "error");
+    }
+  }
+  
   qs("#fileRestore")?.addEventListener("change", (e) => openRestorePreview(e.target.files?.[0]));
   qs("#m_fileRestore")?.addEventListener("change", (e) => {
     openRestorePreview(e.target.files?.[0]);
@@ -1123,11 +1326,7 @@ Stefanie`;
     a.download = name;
     a.click();
     URL.revokeObjectURL(a.href);
-    const state = await storage.getState();
-    state.ui.lastBackupDay = todayKey();
-    await storage.saveState(state, { skipSnapshot: true });
-    memoryState = state;
-    renderDebug();
+    showToast("JSON-Backup heruntergeladen", "success");
   }
 
   async function openRestorePreview(file) {
@@ -1289,20 +1488,6 @@ Stefanie`;
     el.scrollIntoView({ behavior: "smooth", block: "start" });
   });
 
-  /* ---------- Backup Reminder ---------- */
-  function maybeShowBackupReminder() {
-    storage.getState().then((state) => {
-      if (state.ui.lastBackupDay === todayKey()) return;
-      showToast("Backup faellig - jetzt sichern.", "info", {
-        label: "Jetzt sichern",
-        onClick: () => {
-          handleExportBackup();
-          qs("#toast")?.classList.add("hidden");
-        },
-      });
-    });
-  }
-
   /* ---------- Service Worker Update ---------- */
   const updateBanner = qs("#updateBanner");
   const updateReloadBtn = qs("#btnReloadUpdate");
@@ -1363,6 +1548,16 @@ Stefanie`;
   const btnLogout = qs("#btnLogout");
   const teamSelect = qs("#teamSelect");
   const syncMeta = qs("#syncMeta");
+  const brandingForm = qs("#brandingForm");
+  const brandAppNameInput = qs("#brandAppName");
+  const brandLogoInput = qs("#brandLogoUrl");
+  const brandPrimaryInput = qs("#brandPrimary");
+  const brandAccentInput = qs("#brandAccent");
+  const brandTermsInput = qs("#brandTermsLabel");
+  const brandBookingsInput = qs("#brandBookingsLabel");
+  const brandingReadonly = qs("#brandingReadonly");
+  const brandingInfo = qs("#brandingInfo");
+  const brandingRoleHint = qs("#brandingRoleHint");
 
   function renderStatus() {
     const online = navigator.onLine;
@@ -1377,14 +1572,52 @@ Stefanie`;
 
   async function renderAuth() {
     const state = await storage.getState();
+    
+    // Session-Status Badge
+    const statusDot = qs("#statusDot");
+    if (statusDot) {
+      if (!state.user) {
+        statusDot.textContent = "⚪";
+        statusDot.className = "font-bold text-slate-400";
+        statusDot.title = "Offline-Modus";
+      } else if (!navigator.onLine) {
+        statusDot.textContent = "🟡";
+        statusDot.className = "font-bold text-amber-500";
+        statusDot.title = "Offline - Sync wartet";
+      } else if (isCloudReady(state)) {
+        statusDot.textContent = "🟢";
+        statusDot.className = "font-bold text-emerald-600";
+        statusDot.title = "Online & Sync aktiv";
+      } else {
+        statusDot.textContent = "🔵";
+        statusDot.className = "font-bold text-blue-500";
+        statusDot.title = "Angemeldet - lokale Organisation";
+      }
+    }
+    
     if (authStatus) authStatus.textContent = state.user?.email ? `Angemeldet als ${state.user.email}` : "Nicht angemeldet";
-    if (cloudStatus) cloudStatus.textContent = isCloudReady(state) ? "Cloud-Sicherung: aktiv" : "Cloud-Sicherung: nicht angemeldet";
+    if (cloudStatus) cloudStatus.textContent = isCloudReady(state) ? "Online-Speicherung: aktiv" : "Online-Speicherung: nicht angemeldet";
     if (btnLogout) btnLogout.classList.toggle("hidden", !state.user);
     const mBtnLogout = qs("#m_btnLogout");
     const mBtnLogin = qs("#m_btnLogin");
     mBtnLogout?.classList.toggle("hidden", !state.user);
     mBtnLogin?.classList.toggle("hidden", !!state.user);
     if (authForm) authForm.classList.toggle("hidden", !!state.user);
+    
+    // Auto-Backup-Status
+    const autoBackupStatus = qs("#autoBackupStatus");
+    if (autoBackupStatus) {
+      if (isCloudReady(state)) {
+        autoBackupStatus.textContent = "🔄 Automatisch gesichert (Online)";
+        autoBackupStatus.className = "text-xs px-2 py-1 rounded-lg bg-emerald-100 text-emerald-700";
+        autoBackupStatus.title = "Deine Daten werden automatisch online gespeichert";
+      } else {
+        autoBackupStatus.textContent = "💾 Automatisch gesichert (Lokal)";
+        autoBackupStatus.className = "text-xs px-2 py-1 rounded-lg bg-blue-100 text-blue-700";
+        autoBackupStatus.title = "Deine Daten sind auf diesem Gerät gespeichert - Melde dich an für Online-Speicherung";
+      }
+    }
+    
     if (teamSelect) {
       const orgs = state.orgs || [];
       if (orgs.length <= 1) {
@@ -1401,9 +1634,46 @@ Stefanie`;
       }
     }
     if (syncMeta) {
-      const offline = navigator.onLine ? "" : " (offline - wird synchronisiert)";
+      const offline = navigator.onLine ? "" : " (offline - wird gespeichert sobald online)";
       syncMeta.textContent = `Zuletzt aktualisiert: ${state.meta.lastSyncAt || "noch nie"}${offline}`;
     }
+  }
+
+  async function renderBrandingUI(branding = currentBranding) {
+    const state = await storage.getState();
+    const canEdit = canEditBranding(state);
+    const activeBrand = { ...DEFAULT_BRANDING, ...(branding || {}) };
+    const fields = [
+      [brandAppNameInput, activeBrand.appName],
+      [brandLogoInput, activeBrand.logoUrl || ""],
+      [brandPrimaryInput, activeBrand.primaryColor],
+      [brandAccentInput, activeBrand.accentColor],
+      [brandTermsInput, activeBrand.termsLabel],
+      [brandBookingsInput, activeBrand.bookingsLabel],
+    ];
+    fields.forEach(([el, val]) => {
+      if (!el) return;
+      el.value = val || "";
+      el.disabled = !canEdit;
+    });
+    if (brandingForm) brandingForm.classList.toggle("opacity-60", !canEdit);
+    if (brandingRoleHint) brandingRoleHint.textContent = !state.user ? "Login erforderlich" : canEdit ? "Owner/Admin kann aendern" : "Nur Anzeige (Mitglied)";
+    if (brandingReadonly) {
+      if (canEdit) {
+        brandingReadonly.classList.add("hidden");
+      } else {
+        brandingReadonly.classList.remove("hidden");
+        brandingReadonly.innerHTML = `
+          <div><strong>App-Name:</strong> ${activeBrand.appName}</div>
+          <div><strong>Primärfarbe:</strong> ${activeBrand.primaryColor}</div>
+          <div><strong>Akzentfarbe:</strong> ${activeBrand.accentColor}</div>
+          <div><strong>Terms Label:</strong> ${activeBrand.termsLabel}</div>
+          <div><strong>Bookings Label:</strong> ${activeBrand.bookingsLabel}</div>
+          <div><strong>Logo URL:</strong> ${activeBrand.logoUrl || "nicht gesetzt"}</div>
+        `;
+      }
+    }
+    if (brandingInfo) brandingInfo.textContent = navigator.onLine ? "" : "Offline: Branding wird nach Online-Status aktualisiert.";
   }
 
   authForm?.addEventListener("submit", async (e) => {
@@ -1417,6 +1687,38 @@ Stefanie`;
       showToast("Magic Link gesendet. Bitte Postfach pruefen.", "success");
     } catch (err) {
       showToast("Login fehlgeschlagen: " + err.message, "error");
+    }
+  });
+
+  brandingForm?.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const state = await storage.getState();
+    if (!state.activeOrgId) {
+      showToast("Keine Organisation ausgewaehlt", "error");
+      return;
+    }
+    if (!canEditBranding(state)) {
+      showToast("Nur Owner/Admin duerfen Branding aendern", "error");
+      return;
+    }
+    const payload = {
+      appName: (brandAppNameInput?.value || "").trim() || DEFAULT_BRANDING.appName,
+      primaryColor: (brandPrimaryInput?.value || "").trim() || DEFAULT_BRANDING.primaryColor,
+      accentColor: (brandAccentInput?.value || "").trim() || DEFAULT_BRANDING.accentColor,
+      termsLabel: (brandTermsInput?.value || "").trim() || DEFAULT_BRANDING.termsLabel,
+      bookingsLabel: (brandBookingsInput?.value || "").trim() || DEFAULT_BRANDING.bookingsLabel,
+      logoUrl: (brandLogoInput?.value || "").trim() || null,
+    };
+    try {
+      const saved = await upsertBranding(state.activeOrgId, payload);
+      const merged = { ...payload, ...(saved || {}) };
+      await saveBrandingCache(state.activeOrgId, { ...DEFAULT_BRANDING, ...merged });
+      applyBranding(merged);
+      renderBrandingUI(merged);
+      showToast("Branding gespeichert", "success");
+      renderAll();
+    } catch (err) {
+      showToast("Branding konnte nicht gespeichert werden: " + err.message, "error");
     }
   });
 
@@ -1440,6 +1742,7 @@ Stefanie`;
       console.warn("Local logout cleanup failed", err);
     }
     memoryState = state;
+    await loadBrandingForOrg(null);
     renderAll();
     renderAuth();
     renderStatus();
@@ -1454,6 +1757,7 @@ Stefanie`;
       },
       { skipSnapshot: true }
     );
+    await loadBrandingForOrg(val);
     await pullLatestFromServer();
     renderAll();
   });
@@ -1471,7 +1775,7 @@ Stefanie`;
       const dtEnd = toICSDateUTC(slot.ends_at);
       const uidVal = `${slot.id}@terminmanager.app`;
       const summary = (slot.title || "").replace(/\n/g, " ");
-      const description = `${brandName}\nKapazitaet: ${slot.capacity}`;
+      const description = `${currentBranding.appName || DEFAULT_BRANDING.appName}\nKapazitaet: ${slot.capacity}`;
       const ics = `BEGIN:VCALENDAR
 VERSION:2.0
 PRODID:-//Termin Manager//DE
@@ -1516,15 +1820,16 @@ END:VCALENDAR`;
 
   /* ---------- Init ---------- */
   async function init() {
-    applyBranding();
+    applyBranding(DEFAULT_BRANDING);
     await storage.getState();
+    await loadBrandingForOrg();
     if (supabaseClient) {
       await handleAuthCallback();
       await loadSession();
       subscribeAuth();
       await pullLatestFromServer();
+      await loadBrandingForOrg();
     }
-    maybeShowBackupReminder();
     renderAll();
     setupServiceWorkerUpdate();
     renderStatus();

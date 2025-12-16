@@ -4,7 +4,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Termin Manager</title>
+  <title>Terminbuch</title>
   <link rel="icon" href="static/logo.png">
   <script src="https://cdn.tailwindcss.com"></script>
   <script>
@@ -22,15 +22,22 @@
     }
   </script>
   <link rel="manifest" href="manifest.webmanifest">
-  <meta name="theme-color" content="#AF9778">
+  <meta name="theme-color" content="#222222">
 
   <!-- iOS PWA -->
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
-  <meta name="apple-mobile-web-app-title" content="Termin Manager">
+  <meta name="apple-mobile-web-app-title" content="Terminbuch">
   <link rel="apple-touch-icon" href="static/icons/logo.png">
 
   <style>
+    :root {
+      --primary: #222;
+      --accent: #FF7043;
+      --bg: #ffffff;
+      --text: #0f172a;
+    }
+
     .no-scrollbar::-webkit-scrollbar {
       display: none;
     }
@@ -38,6 +45,15 @@
     .no-scrollbar {
       -ms-overflow-style: none;
       scrollbar-width: none;
+    }
+
+    .btn-primary {
+      background: var(--primary);
+      color: #fff;
+    }
+
+    .text-primary {
+      color: var(--primary);
     }
   </style>
 </head>
@@ -48,22 +64,45 @@
     <button id="btnReloadUpdate" class="px-3 py-1 rounded-lg bg-amber-600 text-white text-sm">Neu laden</button>
   </div>
 
+  <!-- Hero Section -->
+  <section class="max-w-4xl mx-auto px-4 py-8 text-center">
+    <h1 class="text-3xl sm:text-4xl font-bold text-dark mb-3">Termine verwalten – einfach, offline, sicher</h1>
+    <p class="text-lg text-slate-600 max-w-2xl mx-auto">
+      Deine Termine jederzeit griffbereit. Funktioniert komplett offline, synchronisiert automatisch in der Cloud. Kein Schnickschnack, keine Abo-Fallen.
+    </p>
+    <div class="flex flex-wrap gap-4 justify-center mt-6 text-sm">
+      <div class="flex items-center gap-2">
+        <span class="text-2xl">📱</span>
+        <span class="text-slate-700">Offline-First</span>
+      </div>
+      <div class="flex items-center gap-2">
+        <span class="text-2xl">🔄</span>
+        <span class="text-slate-700">Automatisch gespeichert</span>
+      </div>
+      <div class="flex items-center gap-2">
+        <span class="text-2xl">🔒</span>
+        <span class="text-slate-700">Deine Daten</span>
+      </div>
+    </div>
+  </section>
+
   <header class="max-w-4xl mx-auto px-4 py-4">
     <div class="grid grid-cols-3 items-center">
       <div></div>
       <div class="justify-self-center flex items-center gap-3">
         <img id="brandLogo" src="static/logo.png" alt="Logo" class="h-10 w-auto relative z-10">
-        <h1 id="brandTitle" class="text-xl font-semibold" style="color:#AF9778">Termin Manager</h1>
+        <h1 id="brandTitle" class="text-xl font-semibold text-primary">Terminbuch</h1>
       </div>
       <div class="flex items-center gap-2 justify-self-end">
         <button id="btnMenu" class="sm:hidden p-2 rounded-xl bg-soft hover:bg-mid text-dark" aria-label="Menue">Menue</button>
         <div class="hidden sm:flex gap-2">
-          <button id="btnManageSlots" type="button" class="px-3 py-2 rounded-xl bg-dark text-white hover:opacity-90 text-sm">Termin anlegen</button>
+          <button id="btnManageSlots" type="button" class="px-3 py-2 rounded-xl bg-dark text-white hover:opacity-90 text-sm" data-label-terms-action>Termin anlegen</button>
           <button id="btnExportCsv" type="button" class="px-3 py-2 rounded-xl bg-soft hover:bg-mid text-sm text-dark">CSV Export</button>
-          <button id="btnBackup" type="button" class="px-3 py-2 rounded-xl bg-brand text-white hover:opacity-90 text-sm">Backup</button>
+          <button id="btnBackup" type="button" class="px-3 py-2 rounded-xl text-white btn-primary hover:opacity-90 text-sm">JSON Backup</button>
           <label for="fileRestore" class="px-3 py-2 rounded-xl bg-soft hover:bg-mid text-sm cursor-pointer text-dark">Wiederherstellen</label>
           <input type="file" id="fileRestore" accept="application/json" class="hidden">
           <button id="btnArchiveView" type="button" class="px-3 py-2 rounded-xl bg-soft hover:bg-mid text-sm text-dark">Archiv</button>
+          <button id="btnClearCache" type="button" class="px-3 py-2 rounded-xl bg-amber-500 hover:bg-amber-600 text-white text-sm" title="Debug: Speicher zurücksetzen">🔧 Reset</button>
         </div>
       </div>
     </div>
@@ -74,11 +113,11 @@
     <div class="absolute inset-0 bg-black/40" data-close="mobilemenu"></div>
     <div id="mobilePanel" class="absolute right-0 top-0 h-full w-[80%] max-w-xs bg-white shadow-2xl p-4 flex flex-col gap-3 translate-x-full transition-transform duration-200">
       <div class="flex items-center justify-between mb-2">
-        <span class="text-lg font-semibold" style="color:#A88C5D">Menue</span>
+        <span class="text-lg font-semibold text-primary">Menue</span>
         <button class="text-slate-500 hover:text-slate-700" data-close="mobilemenu">X</button>
       </div>
       <div class="text-xs uppercase tracking-wide text-slate-500">Hauptbereich</div>
-      <button id="m_btnManageSlots" type="button" class="px-3 py-3 rounded-xl bg-soft text-left text-dark">Termin anlegen</button>
+      <button id="m_btnManageSlots" type="button" class="px-3 py-3 rounded-xl bg-soft text-left text-dark" data-label-terms-action>Termin anlegen</button>
       <button id="m_btnExportCsv" type="button" class="px-3 py-3 rounded-xl bg-soft text-left text-dark">CSV Export</button>
       <button id="m_btnBackup" type="button" class="px-3 py-3 rounded-xl bg-soft text-left text-dark">Backup exportieren</button>
       <label for="m_fileRestore" class="px-3 py-3 rounded-xl bg-soft text-left cursor-pointer text-dark">Backup importieren</label>
@@ -87,6 +126,8 @@
       <div class="text-xs uppercase tracking-wide text-slate-500 mt-4">Konto & Einstellungen</div>
       <button id="m_btnLogin" type="button" class="px-3 py-3 rounded-xl bg-soft text-left text-dark">Anmelden</button>
       <button id="m_btnLogout" type="button" class="px-3 py-3 rounded-xl bg-soft text-left text-dark hidden">Abmelden</button>
+      <div class="text-xs uppercase tracking-wide text-slate-500 mt-4">Debug</div>
+      <button id="m_btnClearCache" type="button" class="px-3 py-3 rounded-xl bg-amber-500 text-white text-left">🔧 Speicher zurücksetzen</button>
     </div>
   </div>
 
@@ -95,11 +136,14 @@
     <div class="flex flex-wrap gap-3 items-center text-sm">
       <div class="flex items-center gap-2">
         <span id="statusDot" class="font-bold text-emerald-600" aria-live="polite">O</span>
-        <span id="syncMeta" class="text-slate-700">Zuletzt synchronisiert: -</span>
+        <span id="syncMeta" class="text-slate-700">Zuletzt aktualisiert: -</span>
+      </div>
+      <div class="flex items-center gap-2">
+        <span id="autoBackupStatus" class="text-xs px-2 py-1 rounded-lg bg-emerald-100 text-emerald-700" title="Automatische Backups aktiv">🔄 Auto-Backup</span>
       </div>
       <div class="flex items-center gap-2 ml-auto">
         <span id="authStatus" class="text-slate-700">Nicht eingeloggt</span>
-        <span id="cloudStatus" class="text-slate-600">Cloud-Sicherung: nicht angemeldet</span>
+        <span id="cloudStatus" class="text-slate-600">Online-Speicherung: nicht angemeldet</span>
         <button id="btnLogout" type="button" class="px-3 py-2 rounded-xl bg-soft hover:bg-mid text-sm text-dark hidden">Abmelden</button>
       </div>
     </div>
@@ -137,14 +181,58 @@
   <!-- Backups -->
   <section class="max-w-4xl mx-auto px-4 pb-10 space-y-4">
     <div class="bg-white/90 border border-gray-200 rounded-2xl p-4 shadow-sm">
-      <h3 class="font-semibold mb-2" style="color:#A88C5D">Lokale Sicherungen (letzte 10)</h3>
+      <h3 class="font-semibold mb-2 text-primary">Lokale Sicherungen (letzte 10)</h3>
       <ul id="localBackups" class="space-y-1 text-sm"></ul>
     </div>
     <details class="bg-white/90 border border-gray-200 rounded-2xl p-4 shadow-sm" open>
-      <summary class="font-semibold cursor-pointer" style="color:#A88C5D">Einstellungen & Cloud</summary>
-      <div class="text-sm text-slate-700 mt-2">Cloud-Sicherung läuft automatisch nach Login.</div>
-      <h4 class="font-semibold mt-3">Cloud-Backups</h4>
+      <summary class="font-semibold cursor-pointer text-primary">
+        Einstellungen & Cloud
+        <button id="btnBackupHelp" type="button" class="ml-2 text-blue-500 hover:text-blue-700 text-lg" title="Hilfe zu Backups">ℹ️</button>
+      </summary>
+      <div class="text-sm text-slate-700 mt-2 space-y-1">
+        <p><strong>Automatische Sicherung:</strong> Alle Änderungen werden sofort auf deinem Gerät gespeichert.</p>
+        <p><strong>Online-Speicherung:</strong> Bei Anmeldung werden deine Daten automatisch online gesichert.</p>
+        <p class="text-xs text-slate-500">💡 Manuelles JSON-Backup nur für Extra-Sicherheit oder Datenaustausch nötig.</p>
+      </div>
+      <h4 class="font-semibold mt-3">Online-Sicherungen (automatisch)</h4>
       <ul id="serverBackups" class="space-y-1 text-sm"></ul>
+      <div class="border-t border-gray-200 mt-4 pt-4 space-y-3">
+        <div class="flex items-center justify-between">
+          <h4 class="font-semibold text-primary">Branding</h4>
+          <span id="brandingRoleHint" class="text-xs text-slate-500"></span>
+        </div>
+        <form id="brandingForm" class="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <label class="flex flex-col gap-1">
+            <span class="text-sm">App-Name</span>
+            <input id="brandAppName" type="text" class="px-3 py-2 rounded-xl border border-gray-400/60" placeholder="Terminbuch">
+          </label>
+          <label class="flex flex-col gap-1">
+            <span class="text-sm">Logo URL (optional)</span>
+            <input id="brandLogoUrl" type="url" class="px-3 py-2 rounded-xl border border-gray-400/60" placeholder="https://.../logo.png">
+          </label>
+          <label class="flex flex-col gap-1">
+            <span class="text-sm">Primaerfarbe</span>
+            <input id="brandPrimary" type="text" class="px-3 py-2 rounded-xl border border-gray-400/60" placeholder="#222">
+          </label>
+          <label class="flex flex-col gap-1">
+            <span class="text-sm">Akzentfarbe</span>
+            <input id="brandAccent" type="text" class="px-3 py-2 rounded-xl border border-gray-400/60" placeholder="#FF7043">
+          </label>
+          <label class="flex flex-col gap-1">
+            <span class="text-sm">Terms Label</span>
+            <input id="brandTermsLabel" type="text" class="px-3 py-2 rounded-xl border border-gray-400/60" placeholder="Termine">
+          </label>
+          <label class="flex flex-col gap-1">
+            <span class="text-sm">Bookings Label</span>
+            <input id="brandBookingsLabel" type="text" class="px-3 py-2 rounded-xl border border-gray-400/60" placeholder="Buchungen">
+          </label>
+          <div class="md:col-span-2 flex gap-2 items-center">
+            <button id="brandingSave" type="submit" class="px-4 py-2 rounded-xl text-white btn-primary">Speichern</button>
+            <span id="brandingInfo" class="text-xs text-slate-500"></span>
+          </div>
+        </form>
+        <div id="brandingReadonly" class="hidden text-sm text-slate-600 bg-slate-50 border border-slate-200 rounded-xl p-3"></div>
+      </div>
       <div id="debugPanel" class="hidden text-xs text-slate-600 bg-yellow-50 border border-yellow-200 rounded-xl px-3 py-2 mt-3"></div>
     </details>
   </section>
@@ -153,7 +241,7 @@
   <div id="modalBooking" class="fixed inset-0 z-50 bg-black/40 hidden items-center justify-center p-4">
     <div class="bg-white rounded-2xl shadow-xl w-full max-w-lg p-5" role="dialog" aria-modal="true">
       <div class="flex items-center justify-between mb-3">
-        <h2 id="modalBookingTitle" class="text-lg font-semibold" style="color:#AF9778">Buchung</h2>
+        <h2 id="modalBookingTitle" class="text-lg font-semibold text-primary" data-label-bookings>Teilnehmer</h2>
         <button data-close="booking" class="text-slate-500 hover:text-slate-700" aria-label="Schliessen">X</button>
       </div>
       <form id="formBooking" class="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -197,7 +285,7 @@
           <button type="button" id="btnDeleteBooking" class="w-full sm:w-auto px-4 py-2 rounded-xl bg-rose-100 text-rose-700 hidden">Loeschen</button>
           <button type="button" id="btnWhatsappShare" class="w-full sm:w-auto px-4 py-2 rounded-xl bg-emerald-600 text-white hidden">WhatsApp</button>
           <button type="button" data-close="booking" class="w-full sm:w-auto px-4 py-2 rounded-xl bg-gray-200">Abbrechen</button>
-          <button type="submit" class="w-full sm:w-auto px-4 py-2 rounded-xl text-white" style="background:#AF9778">Speichern</button>
+          <button type="submit" class="w-full sm:w-auto px-4 py-2 rounded-xl text-white btn-primary">Speichern</button>
         </div>
       </form>
     </div>
@@ -207,7 +295,7 @@
   <div id="modalSlots" class="fixed inset-0 z-50 bg-black/40 hidden items-center justify-center p-4">
     <div class="bg-white rounded-2xl shadow-xl w-full max-w-lg p-5" role="dialog" aria-modal="true">
       <div class="flex items-center justify-between mb-3">
-        <h2 class="text-lg font-semibold" style="color:#AF9778">Termin anlegen / bearbeiten</h2>
+        <h2 class="text-lg font-semibold text-primary" data-label-terms-modal>Termin anlegen / bearbeiten</h2>
         <button data-close="slots" class="text-slate-500 hover:text-slate-700" aria-label="Schliessen">X</button>
       </div>
       <form id="formSlot" class="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -240,7 +328,7 @@
         </label>
         <div class="md:col-span-2 flex flex-col sm:flex-row gap-2">
           <button type="button" data-close="slots" class="w-full sm:w-auto px-4 py-2 rounded-xl bg-gray-200">Abbrechen</button>
-          <button type="submit" class="w-full sm:w-auto px-4 py-2 rounded-xl text-white" style="background:#AF9778">Speichern</button>
+          <button type="submit" class="w-full sm:w-auto px-4 py-2 rounded-xl text-white btn-primary">Speichern</button>
         </div>
       </form>
     </div>
@@ -266,30 +354,85 @@
   <!-- Modal: Backup Import -->
   <div id="modalBackupImport" class="fixed inset-0 z-50 bg-black/40 hidden items-center justify-center p-4">
     <div class="bg-white rounded-2xl shadow-xl w-full max-w-md p-6">
-      <h3 class="text-lg font-semibold mb-2" style="color:#AF9778">Backup wiederherstellen</h3>
+      <h3 class="text-lg font-semibold mb-2 text-primary">Backup wiederherstellen</h3>
       <p class="text-sm text-slate-700 mb-4">Datei: <span id="importFileName" class="font-medium">-</span></p>
       <p class="text-sm text-slate-700 mb-4">Inhalt: <span id="importCounts" class="font-medium">-</span></p>
       <div class="flex justify-end gap-2">
-        <button id="btnCancelImport" class="px-4 py-2 rounded-xl bg-gray-200">Abbrechen</button>
-        <button id="btnConfirmImport" class="px-4 py-2 rounded-xl bg-emerald-600 text-white">Importieren</button>
+        <button id="btnCancelImport" data-close="backupimport" class="px-4 py-2 rounded-xl bg-gray-200">Abbrechen</button>
+        <button id="btnConfirmImport" class="px-4 py-2 rounded-xl bg-emerald-600 text-white">Wiederherstellen</button>
       </div>
-      <p class="text-xs text-slate-500 mt-3">Import uebernimmt alle Termine und Buchungen. Falls vorhanden, wird die aktive Organisation beibehalten.</p>
+    </div>
+  </div>
+
+  <!-- Modal: Backup-Hilfe -->
+  <div id="modalBackupHelp" class="fixed inset-0 z-50 bg-black/40 hidden items-center justify-center p-4">
+    <div class="bg-white rounded-2xl shadow-xl w-full max-w-2xl p-6 max-h-[80vh] overflow-y-auto">
+      <div class="flex items-start justify-between mb-4">
+        <h3 class="text-xl font-bold text-primary">📚 Backup & Wiederherstellung erklärt</h3>
+        <button data-close="backuphelp" class="text-slate-500 hover:text-slate-700 text-2xl leading-none">&times;</button>
+      </div>
+      
+      <div class="space-y-4 text-sm text-slate-700">
+        <section>
+          <h4 class="font-semibold text-base mb-2 text-primary">🔄 Automatische Sicherung</h4>
+          <p class="mb-2">Deine Termine werden automatisch gespeichert:</p>
+          <ul class="list-disc ml-5 space-y-1">
+            <li><strong>Auf deinem Gerät:</strong> Jede Änderung wird sofort lokal gesichert (bis zu 10 automatische Backups)</li>
+            <li><strong>Online:</strong> Wenn du angemeldet bist, werden alle Änderungen zusätzlich online gespeichert</li>
+            <li><strong>Kein Verlust:</strong> Selbst ohne Internet sind deine Daten sicher – sie werden synchronisiert, sobald du wieder online bist</li>
+          </ul>
+        </section>
+
+        <section class="border-t pt-4">
+          <h4 class="font-semibold text-base mb-2 text-primary">💾 Manuelles JSON-Backup</h4>
+          <p class="mb-2">Nutze den "JSON Backup"-Button für:</p>
+          <ul class="list-disc ml-5 space-y-1">
+            <li><strong>Extra-Sicherheit:</strong> Download einer Backup-Datei auf deinem Computer</li>
+            <li><strong>Datenaustausch:</strong> Übertragung auf ein anderes Gerät</li>
+            <li><strong>Archivierung:</strong> Langzeit-Sicherung wichtiger Daten</li>
+          </ul>
+        </section>
+
+        <section class="border-t pt-4">
+          <h4 class="font-semibold text-base mb-2 text-primary">♻️ Wiederherstellen</h4>
+          <p class="mb-2">So stellst du ein Backup wieder her:</p>
+          <ol class="list-decimal ml-5 space-y-1">
+            <li><strong>Lokale Backups:</strong> Klicke in der Liste auf "Wiederherstellen" – deine Daten werden sofort zurückgesetzt</li>
+            <li><strong>JSON-Datei:</strong> Klicke "Wiederherstellen", wähle die Backup-Datei aus und bestätige</li>
+            <li><strong>⚠️ Achtung:</strong> Bestehende Daten werden überschrieben! Bei Unsicherheit vorher ein neues Backup erstellen</li>
+          </ol>
+        </section>
+
+        <section class="border-t pt-4">
+          <h4 class="font-semibold text-base mb-2 text-primary">☁️ Online-Speicherung</h4>
+          <p class="mb-2">Vorteile der Anmeldung:</p>
+          <ul class="list-disc ml-5 space-y-1">
+            <li>Zugriff von mehreren Geräten (Handy, Tablet, Computer)</li>
+            <li>Automatische Synchronisation im Hintergrund</li>
+            <li>Team-Funktionen: Gemeinsam Termine verwalten</li>
+            <li>Daten bleiben auch bei Gerätewechsel oder Neuinstallation erhalten</li>
+          </ul>
+        </section>
+
+        <section class="border-t pt-4 bg-blue-50 -mx-6 -mb-6 p-6 rounded-b-2xl">
+          <h4 class="font-semibold text-base mb-2 text-blue-800">💡 Empfehlung</h4>
+          <p><strong>Für Normalnutzung:</strong> Einfach anmelden und automatisch speichern lassen – fertig!</p>
+          <p class="mt-2"><strong>Für wichtige Events:</strong> Zusätzlich vor dem Event ein JSON-Backup herunterladen.</p>
+        </section>
+      </div>
     </div>
   </div>
 
   <!-- Toast -->
   <div id="toast" class="fixed bottom-4 left-1/2 -translate-x-1/2 bg-white/90 backdrop-blur border border-gray-200 shadow-xl rounded-xl px-4 py-3 hidden">
     <span id="toastMsg" class="text-sm"></span>
-    <a id="toastLink" href="#" target="_blank" class="ml-3 underline" style="color:#AF9778">Oeffnen</a>
+    <a id="toastLink" href="#" target="_blank" class="ml-3 underline text-primary">Oeffnen</a>
   </div>
 
   <script>
     window.APP_CONFIG = {
       SUPABASE_URL: "https://mpgmsxkibyytdfaswpoa.supabase.co",
-      SUPABASE_ANON_KEY: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1wZ21zeGtpYnl5dGRmYXN3cG9hIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjU4MDc4MDUsImV4cCI6MjA4MTM4MzgwNX0.isQbD5QbXBAUGxJzz6Sb2VCZCVbjs5t8bOii0QTQZNE",
-      BRAND_NAME: "Termin Manager",
-      BRAND_COLOR: "#AF9778",
-      BRAND_LOGO: "static/logo.png"
+      SUPABASE_ANON_KEY: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1wZ21zeGtpYnl5dGRmYXN3cG9hIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjU4MDc4MDUsImV4cCI6MjA4MTM4MzgwNX0.isQbD5QbXBAUGxJzz6Sb2VCZCVbjs5t8bOii0QTQZNE"
     };
   </script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.3/dist/umd/supabase.js" crossorigin="anonymous"></script>
