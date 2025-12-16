@@ -30,6 +30,13 @@
     }
     return null;
   };
+  const normalizeColor = (val) => {
+    const hex = normalizeHexColor(val);
+    if (hex) return hex;
+    const v = String(val || "").trim();
+    if (v && window.CSS && CSS.supports && CSS.supports("color", v)) return v;
+    return null;
+  };
   const toLocal = (d) => {
     const p = (n) => String(n).padStart(2, "0");
     return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`;
@@ -2030,10 +2037,10 @@ Stefanie`;
         showToast("Nur Owner/Admin dürfen Branding ändern", "error");
         return;
       }
-      const primary = normalizeHexColor(brandPrimaryInput?.value) || normalizeHexColor(DEFAULT_BRANDING.primaryColor);
-      const accent = normalizeHexColor(brandAccentInput?.value) || normalizeHexColor(DEFAULT_BRANDING.accentColor);
+      const primary = normalizeColor(brandPrimaryInput?.value) || normalizeColor(DEFAULT_BRANDING.primaryColor);
+      const accent = normalizeColor(brandAccentInput?.value) || normalizeColor(DEFAULT_BRANDING.accentColor);
       if (!primary || !accent) {
-        showToast("Ungültige Farbe. Bitte Hex (#RRGGBB) verwenden.", "error");
+        showToast("Ungültige Farbe. Bitte Hex (#RRGGBB) oder gültigen CSS-Farbwert verwenden.", "error");
         return;
       }
       const payload = {
