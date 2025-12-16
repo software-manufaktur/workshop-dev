@@ -111,7 +111,18 @@
     if (orgs.length && !orgs.find((o) => o.id === id)) return orgs[0]?.id || null;
     return id;
   };
-  const isCloudReady = (state) => Boolean(supabaseClient && authUser && isUuid(state?.activeOrgId));
+  const resolveActiveOrgId = (state) => {
+    const normalized = normalizeActiveOrgId(state?.activeOrgId, state?.orgs);
+    if (normalized) return normalized;
+    if (state?.user && Array.isArray(state?.orgs) && state.orgs.length === 1) {
+      return normalizeActiveOrgId(state.orgs[0]?.id, state.orgs) || null;
+    }
+    return null;
+  };
+  const isCloudReady = (state) => {
+    const activeOrgId = resolveActiveOrgId(state);
+    return Boolean(supabaseClient && authUser && isUuid(activeOrgId));
+  };
 
   function applyBranding(branding = DEFAULT_BRANDING) {
     currentBranding = { ...DEFAULT_BRANDING, ...(branding || {}) };
@@ -589,7 +600,15 @@
 
   async function loadBrandingForOrg(orgId) {
     const state = await storage.getState();
-    const targetOrg = orgId || state.activeOrgId || null;
+    const targetOrg = typeof orgId === "undefined" ? resolveActiveOrgId(state) : orgId || null;
+    if (!state.activeOrgId && targetOrg) {
+      await updateState(
+        (draft) => {
+          draft.activeOrgId = targetOrg;
+        },
+        { skipSnapshot: true, skipRender: true, skipSync: true }
+      );
+    }
     let branding = null;
     if (navigator.onLine && supabaseClient && authUser && targetOrg) {
       try {
@@ -1662,6 +1681,9 @@ Stefanie`;
   }
   
   function switchToTab(tabName) {
+    const allowedTabs = ["team", "backup", "branding"];
+    const targetTab = allowedTabs.includes(tabName) ? tabName : "branding";
+
     // Alle Tabs & Buttons zurücksetzen
     qsa('.tab-button').forEach(btn => {
       btn.classList.remove('border-primary', 'text-primary');
@@ -1672,8 +1694,8 @@ Stefanie`;
     });
     
     // Aktiven Tab aktivieren
-    const activeBtn = qs(`.tab-button[data-tab="${tabName}"]`);
-    const activeContent = qs(`.tab-content[data-tab-content="${tabName}"]`);
+    const activeBtn = qs(`.tab-button[data-tab="${targetTab}"]`);
+    const activeContent = qs(`.tab-content[data-tab-content="${targetTab}"]`);
     
     if (activeBtn) {
       activeBtn.classList.remove('border-transparent');
@@ -1685,7 +1707,7 @@ Stefanie`;
     }
     
     // Bei Team-Tab: Org-Info und Invite-Link laden (nur wenn angemeldet)
-    if (tabName === 'team' && authUser) {
+    if (targetTab === 'team' && authUser) {
       updateOrgInfo().catch(err => console.warn('updateOrgInfo failed:', err));
     }
   }
@@ -1897,7 +1919,17 @@ Stefanie`;
 
   async function renderBrandingUI(branding = currentBranding) {
     const state = await storage.getState();
-    const canEdit = canEditBranding(state);
+    const activeOrgId = resolveActiveOrgId(state);
+    const stateWithActive = { ...state, activeOrgId };
+    if (!state.activeOrgId && activeOrgId) {
+      await updateState(
+        (draft) => {
+          draft.activeOrgId = activeOrgId;
+        },
+        { skipSnapshot: true, skipRender: true, skipSync: true }
+      );
+    }
+    const canEdit = canEditBranding(stateWithActive);
     const activeBrand = { ...DEFAULT_BRANDING, ...(branding || {}) };
     const categories = activeBrand.categories || DEFAULT_BRANDING.categories;
     const categoriesInput = qs("#brandCategories");
@@ -1956,11 +1988,13 @@ Stefanie`;
     if (e.target && e.target.id === "brandingForm") {
       e.preventDefault();
       const state = await storage.getState();
-      if (!state.activeOrgId) {
+      const activeOrgId = resolveActiveOrgId(state);
+      if (!activeOrgId) {
         showToast("Keine Organisation ausgewählt", "error");
         return;
       }
-      if (!canEditBranding(state)) {
+      const stateWithActive = { ...state, activeOrgId };
+      if (!canEditBranding(stateWithActive)) {
         showToast("Nur Owner/Admin dürfen Branding ändern", "error");
         return;
       }
@@ -1974,9 +2008,9 @@ Stefanie`;
         categories: (qs("#brandCategories")?.value || "").split(",").map(c => c.trim()).filter(Boolean),
       };
       try {
-        const saved = await upsertBranding(state.activeOrgId, payload);
+        const saved = await upsertBranding(activeOrgId, payload);
         const merged = { ...payload, ...(saved || {}) };
-        await saveBrandingCache(state.activeOrgId, { ...DEFAULT_BRANDING, ...merged });
+        await saveBrandingCache(activeOrgId, { ...DEFAULT_BRANDING, ...merged });
         applyBranding(merged);
         renderBrandingUI(merged);
         showToast("Branding gespeichert", "success");
@@ -2044,8 +2078,17 @@ Stefanie`;
     
     // State aus Storage laden
     const state = await storage.getState();
+    const activeOrgId = state.activeOrgId || resolveActiveOrgId(state);
+    if (!state.activeOrgId && activeOrgId) {
+      await updateState(
+        (draft) => {
+          draft.activeOrgId = activeOrgId;
+        },
+        { skipSnapshot: true, skipRender: true, skipSync: true }
+      );
+    }
     
-    if (!state.activeOrgId || !state.orgs?.length) {
+    if (!activeOrgId || !state.orgs?.length) {
       if (currentOrgName) currentOrgName.textContent = "Keine Organisation ausgewählt";
       if (currentOrgRole) currentOrgRole.textContent = "";
       btnEditOrgName?.classList.add("hidden");
@@ -2053,7 +2096,7 @@ Stefanie`;
       return;
     }
     
-    const org = state.orgs.find(o => o.id === state.activeOrgId);
+    const org = state.orgs.find(o => o.id === activeOrgId);
     if (!org) {
       if (currentOrgName) currentOrgName.textContent = "Keine Organisation ausgewählt";
       if (currentOrgRole) currentOrgRole.textContent = "";

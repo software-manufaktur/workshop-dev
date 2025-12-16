@@ -14,7 +14,9 @@ create extension if not exists "pgcrypto";
 create table if not exists public.orgs (
   id uuid primary key default gen_random_uuid(),
   name text not null,
-  created_at timestamptz not null default now()
+  metadata jsonb default '{}'::jsonb,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz default now()
 );
 
 create table if not exists public.org_members (
@@ -48,6 +50,7 @@ create table if not exists public.org_settings (
   logo_url text null,
   terms_label text null,
   bookings_label text null,
+  categories jsonb default '["Workshop","Kurs","Event","Seminar","Kindergeburtstag"]'::jsonb,
   updated_at timestamptz not null default now()
 );
 
@@ -465,7 +468,8 @@ create or replace function public.set_org_settings(
   p_accent_color text default null,
   p_logo_url text default null,
   p_terms_label text default null,
-  p_bookings_label text default null
+  p_bookings_label text default null,
+  p_categories jsonb default null
 ) returns public.org_settings
 language plpgsql
 security definer
@@ -476,17 +480,16 @@ declare
 begin
   perform public._require_org_role(p_org_id, array['owner','admin']);
 
-  insert into public.org_settings as s
-    (org_id, app_name, primary_color, accent_color, logo_url, terms_label, bookings_label, updated_at)
-  values
-    (p_org_id, p_app_name, p_primary_color, p_accent_color, p_logo_url, p_terms_label, p_bookings_label, now())
+  insert into public.org_settings as s (org_id, app_name, primary_color, accent_color, logo_url, terms_label, bookings_label, categories, updated_at)
+  values (p_org_id, p_app_name, p_primary_color, p_accent_color, p_logo_url, p_terms_label, p_bookings_label, p_categories, now())
   on conflict (org_id) do update
-    set app_name = excluded.app_name,
-        primary_color = excluded.primary_color,
-        accent_color = excluded.accent_color,
-        logo_url = excluded.logo_url,
-        terms_label = excluded.terms_label,
-        bookings_label = excluded.bookings_label,
+    set app_name = coalesce(excluded.app_name, s.app_name),
+        primary_color = coalesce(excluded.primary_color, s.primary_color),
+        accent_color = coalesce(excluded.accent_color, s.accent_color),
+        logo_url = coalesce(excluded.logo_url, s.logo_url),
+        terms_label = coalesce(excluded.terms_label, s.terms_label),
+        bookings_label = coalesce(excluded.bookings_label, s.bookings_label),
+        categories = coalesce(excluded.categories, s.categories),
         updated_at = now()
   returning * into v_row;
 
