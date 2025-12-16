@@ -64,45 +64,26 @@
     <button id="btnReloadUpdate" class="px-3 py-1 rounded-lg bg-amber-600 text-white text-sm">Neu laden</button>
   </div>
 
-  <!-- Hero Section -->
-  <section class="max-w-4xl mx-auto px-4 py-8 text-center">
-    <h1 class="text-3xl sm:text-4xl font-bold text-dark mb-3">Termine verwalten – einfach, offline, sicher</h1>
-    <p class="text-lg text-slate-600 max-w-2xl mx-auto">
-      Deine Termine jederzeit griffbereit. Funktioniert komplett offline, synchronisiert automatisch in der Cloud. Kein Schnickschnack, keine Abo-Fallen.
-    </p>
-    <div class="flex flex-wrap gap-4 justify-center mt-6 text-sm">
-      <div class="flex items-center gap-2">
-        <span class="text-2xl">📱</span>
-        <span class="text-slate-700">Offline-First</span>
-      </div>
-      <div class="flex items-center gap-2">
-        <span class="text-2xl">🔄</span>
-        <span class="text-slate-700">Automatisch gespeichert</span>
-      </div>
-      <div class="flex items-center gap-2">
-        <span class="text-2xl">🔒</span>
-        <span class="text-slate-700">Deine Daten</span>
-      </div>
+  <header class="max-w-4xl mx-auto px-4 py-6">
+    <!-- Logo und Titel -->
+    <div class="flex items-center justify-center gap-3 mb-6">
+      <img id="brandLogo" src="static/logo.png" alt="Logo" class="h-12 w-auto">
+      <h1 id="brandTitle" class="text-2xl font-semibold text-primary">Terminbuch</h1>
     </div>
-  </section>
-
-  <header class="max-w-4xl mx-auto px-4 py-4">
-    <div class="grid grid-cols-3 items-center">
-      <div></div>
-      <div class="justify-self-center flex items-center gap-3">
-        <img id="brandLogo" src="static/logo.png" alt="Logo" class="h-10 w-auto relative z-10">
-        <h1 id="brandTitle" class="text-xl font-semibold text-primary">Terminbuch</h1>
-      </div>
-      <div class="flex items-center gap-2 justify-self-end">
-        <button id="btnMenu" class="sm:hidden p-2 rounded-xl bg-soft hover:bg-mid text-dark" aria-label="Menue">Menue</button>
+    
+    <!-- Aktionen -->
+    <div class="flex items-center justify-between">
+      <button id="btnManageSlots" type="button" class="px-4 py-2 rounded-xl bg-dark text-white hover:opacity-90" data-label-terms-action>Termin anlegen</button>
+      
+      <div class="flex items-center gap-2">
+        <button id="btnMenu" class="sm:hidden p-2 rounded-xl bg-soft hover:bg-mid text-dark" aria-label="Menue">☰</button>
         <div class="hidden sm:flex gap-2">
-          <button id="btnManageSlots" type="button" class="px-3 py-2 rounded-xl bg-dark text-white hover:opacity-90 text-sm" data-label-terms-action>Termin anlegen</button>
           <button id="btnExportCsv" type="button" class="px-3 py-2 rounded-xl bg-soft hover:bg-mid text-sm text-dark">CSV Export</button>
           <button id="btnBackup" type="button" class="px-3 py-2 rounded-xl text-white btn-primary hover:opacity-90 text-sm">JSON Backup</button>
           <label for="fileRestore" class="px-3 py-2 rounded-xl bg-soft hover:bg-mid text-sm cursor-pointer text-dark">Wiederherstellen</label>
           <input type="file" id="fileRestore" accept="application/json" class="hidden">
           <button id="btnArchiveView" type="button" class="px-3 py-2 rounded-xl bg-soft hover:bg-mid text-sm text-dark">Archiv</button>
-          <button id="btnClearCache" type="button" class="px-3 py-2 rounded-xl bg-amber-500 hover:bg-amber-600 text-white text-sm" title="Debug: Speicher zurücksetzen">🔧 Reset</button>
+          <button id="btnSettings" type="button" class="px-3 py-2 rounded-xl bg-soft hover:bg-mid text-sm text-dark">⚙️ Einstellungen</button>
         </div>
       </div>
     </div>
@@ -123,7 +104,8 @@
       <label for="m_fileRestore" class="px-3 py-3 rounded-xl bg-soft text-left cursor-pointer text-dark">Backup importieren</label>
       <input type="file" id="m_fileRestore" accept="application/json" class="hidden">
       <button id="m_btnArchiveView" type="button" class="px-3 py-3 rounded-xl bg-soft text-left text-dark">Archiv</button>
-      <div class="text-xs uppercase tracking-wide text-slate-500 mt-4">Konto & Einstellungen</div>
+      <button id="m_btnSettings" type="button" class="px-3 py-3 rounded-xl bg-soft text-left text-dark">⚙️ Einstellungen</button>
+      <div class="text-xs uppercase tracking-wide text-slate-500 mt-4">Konto</div>
       <button id="m_btnLogin" type="button" class="px-3 py-3 rounded-xl bg-soft text-left text-dark">Anmelden</button>
       <button id="m_btnLogout" type="button" class="px-3 py-3 rounded-xl bg-soft text-left text-dark hidden">Abmelden</button>
       <div class="text-xs uppercase tracking-wide text-slate-500 mt-4">Debug</div>
@@ -142,6 +124,23 @@
         <span id="autoBackupStatus" class="text-xs px-2 py-1 rounded-lg bg-emerald-100 text-emerald-700" title="Automatische Backups aktiv">🔄 Auto-Backup</span>
       </div>
       <div class="flex items-center gap-2 ml-auto">
+        <span id="authStatus" class="text-slate-700">Nicht eingeloggt</span>
+        <button id="btnLogout" type="button" class="px-3 py-2 rounded-xl bg-soft hover:bg-mid text-sm text-dark hidden">Abmelden</button>
+      </div>
+    </div>
+    <div class="flex flex-wrap gap-3 items-center">
+      <form id="authForm" class="flex flex-wrap gap-2 items-center">
+        <input id="authEmail" type="email" required class="px-3 py-2 rounded-xl border border-gray-400/60" placeholder="E-Mail fuer Magic Link">
+        <button type="submit" class="px-3 py-2 rounded-xl bg-emerald-600 text-white text-sm">Anmelden</button>
+      </form>
+      <label class="flex items-center gap-2 text-sm">
+        Konto/Team
+        <select id="teamSelect" class="px-3 py-2 rounded-xl border border-gray-400/60 min-w-[140px]">
+          <option value="">Lokaler Modus</option>
+        </select>
+      </label>
+    </div>
+  </section>
         <span id="authStatus" class="text-slate-700">Nicht eingeloggt</span>
         <span id="cloudStatus" class="text-slate-600">Online-Speicherung: nicht angemeldet</span>
         <button id="btnLogout" type="button" class="px-3 py-2 rounded-xl bg-soft hover:bg-mid text-sm text-dark hidden">Abmelden</button>
@@ -178,64 +177,88 @@
   <!-- Slot-Liste -->
   <main class="max-w-4xl mx-auto px-4 pb-28" id="list"></main>
 
-  <!-- Backups -->
-  <section class="max-w-4xl mx-auto px-4 pb-10 space-y-4">
-    <div class="bg-white/90 border border-gray-200 rounded-2xl p-4 shadow-sm">
-      <h3 class="font-semibold mb-2 text-primary">Lokale Sicherungen (letzte 10)</h3>
-      <ul id="localBackups" class="space-y-1 text-sm"></ul>
-    </div>
-    <details class="bg-white/90 border border-gray-200 rounded-2xl p-4 shadow-sm" open>
-      <summary class="font-semibold cursor-pointer text-primary">
-        Einstellungen & Cloud
-        <button id="btnBackupHelp" type="button" class="ml-2 text-blue-500 hover:text-blue-700 text-lg" title="Hilfe zu Backups">ℹ️</button>
-      </summary>
-      <div class="text-sm text-slate-700 mt-2 space-y-1">
-        <p><strong>Automatische Sicherung:</strong> Alle Änderungen werden sofort auf deinem Gerät gespeichert.</p>
-        <p><strong>Online-Speicherung:</strong> Bei Anmeldung werden deine Daten automatisch online gesichert.</p>
-        <p class="text-xs text-slate-500">💡 Manuelles JSON-Backup nur für Extra-Sicherheit oder Datenaustausch nötig.</p>
+  <!-- Einstellungen Modal -->
+  <div id="modalSettings" class="fixed inset-0 z-50 bg-black/40 hidden items-center justify-center p-4">
+    <div class="bg-white rounded-2xl shadow-xl w-full max-w-3xl max-h-[85vh] overflow-y-auto">
+      <div class="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between">
+        <h2 class="text-xl font-bold text-primary">⚙️ Einstellungen</h2>
+        <button data-close="settings" class="text-slate-500 hover:text-slate-700 text-2xl leading-none">&times;</button>
       </div>
-      <h4 class="font-semibold mt-3">Online-Sicherungen (automatisch)</h4>
-      <ul id="serverBackups" class="space-y-1 text-sm"></ul>
-      <div class="border-t border-gray-200 mt-4 pt-4 space-y-3">
-        <div class="flex items-center justify-between">
-          <h4 class="font-semibold text-primary">Branding</h4>
-          <span id="brandingRoleHint" class="text-xs text-slate-500"></span>
-        </div>
-        <form id="brandingForm" class="grid grid-cols-1 md:grid-cols-2 gap-3">
-          <label class="flex flex-col gap-1">
-            <span class="text-sm">App-Name</span>
-            <input id="brandAppName" type="text" class="px-3 py-2 rounded-xl border border-gray-400/60" placeholder="Terminbuch">
-          </label>
-          <label class="flex flex-col gap-1">
-            <span class="text-sm">Logo URL (optional)</span>
-            <input id="brandLogoUrl" type="url" class="px-3 py-2 rounded-xl border border-gray-400/60" placeholder="https://.../logo.png">
-          </label>
-          <label class="flex flex-col gap-1">
-            <span class="text-sm">Primaerfarbe</span>
-            <input id="brandPrimary" type="text" class="px-3 py-2 rounded-xl border border-gray-400/60" placeholder="#222">
-          </label>
-          <label class="flex flex-col gap-1">
-            <span class="text-sm">Akzentfarbe</span>
-            <input id="brandAccent" type="text" class="px-3 py-2 rounded-xl border border-gray-400/60" placeholder="#FF7043">
-          </label>
-          <label class="flex flex-col gap-1">
-            <span class="text-sm">Terms Label</span>
-            <input id="brandTermsLabel" type="text" class="px-3 py-2 rounded-xl border border-gray-400/60" placeholder="Termine">
-          </label>
-          <label class="flex flex-col gap-1">
-            <span class="text-sm">Bookings Label</span>
-            <input id="brandBookingsLabel" type="text" class="px-3 py-2 rounded-xl border border-gray-400/60" placeholder="Buchungen">
-          </label>
-          <div class="md:col-span-2 flex gap-2 items-center">
-            <button id="brandingSave" type="submit" class="px-4 py-2 rounded-xl text-white btn-primary">Speichern</button>
-            <span id="brandingInfo" class="text-xs text-slate-500"></span>
+      
+      <div class="p-6 space-y-6">
+        <!-- Backup-Verwaltung -->
+        <section>
+          <div class="flex items-center justify-between mb-3">
+            <h3 class="font-semibold text-lg text-primary">📦 Backup-Verwaltung</h3>
+            <button id="btnBackupHelp" type="button" class="text-blue-500 hover:text-blue-700" title="Hilfe zu Backups">ℹ️ Hilfe</button>
           </div>
-        </form>
-        <div id="brandingReadonly" class="hidden text-sm text-slate-600 bg-slate-50 border border-slate-200 rounded-xl p-3"></div>
+          
+          <div class="bg-blue-50 border border-blue-200 rounded-xl p-4 mb-4 text-sm">
+            <p><strong>Automatische Sicherung:</strong> Alle Änderungen werden sofort auf deinem Gerät gespeichert.</p>
+            <p class="mt-1"><strong>Online-Speicherung:</strong> Bei Anmeldung werden deine Daten automatisch online gesichert.</p>
+          </div>
+          
+          <div class="space-y-4">
+            <div>
+              <h4 class="font-semibold mb-2">Lokale Sicherungen (letzte 10)</h4>
+              <ul id="localBackups" class="space-y-1 text-sm bg-slate-50 border border-slate-200 rounded-xl p-3 max-h-48 overflow-y-auto"></ul>
+            </div>
+            
+            <div>
+              <h4 class="font-semibold mb-2">Online-Sicherungen (automatisch)</h4>
+              <ul id="serverBackups" class="space-y-1 text-sm bg-slate-50 border border-slate-200 rounded-xl p-3 max-h-48 overflow-y-auto"></ul>
+            </div>
+          </div>
+        </section>
+
+        <!-- Branding -->
+        <section class="border-t border-gray-200 pt-6">
+          <div class="flex items-center justify-between mb-3">
+            <h3 class="font-semibold text-lg text-primary">🎨 Branding</h3>
+            <span id="brandingRoleHint" class="text-xs text-slate-500"></span>
+          </div>
+          
+          <form id="brandingForm" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <label class="flex flex-col gap-1">
+              <span class="text-sm font-medium">App-Name</span>
+              <input id="brandAppName" type="text" class="px-3 py-2 rounded-xl border border-gray-400/60" placeholder="Terminbuch">
+            </label>
+            <label class="flex flex-col gap-1">
+              <span class="text-sm font-medium">Logo URL (optional)</span>
+              <input id="brandLogoUrl" type="url" class="px-3 py-2 rounded-xl border border-gray-400/60" placeholder="https://.../logo.png">
+            </label>
+            <label class="flex flex-col gap-1">
+              <span class="text-sm font-medium">Primärfarbe</span>
+              <input id="brandPrimary" type="text" class="px-3 py-2 rounded-xl border border-gray-400/60" placeholder="#222">
+            </label>
+            <label class="flex flex-col gap-1">
+              <span class="text-sm font-medium">Akzentfarbe</span>
+              <input id="brandAccent" type="text" class="px-3 py-2 rounded-xl border border-gray-400/60" placeholder="#FF7043">
+            </label>
+            <label class="flex flex-col gap-1">
+              <span class="text-sm font-medium">Terms Label</span>
+              <input id="brandTermsLabel" type="text" class="px-3 py-2 rounded-xl border border-gray-400/60" placeholder="Termine">
+            </label>
+            <label class="flex flex-col gap-1">
+              <span class="text-sm font-medium">Bookings Label</span>
+              <input id="brandBookingsLabel" type="text" class="px-3 py-2 rounded-xl border border-gray-400/60" placeholder="Buchungen">
+            </label>
+            <div class="md:col-span-2 flex gap-2 items-center">
+              <button id="brandingSave" type="submit" class="px-4 py-2 rounded-xl text-white btn-primary">Speichern</button>
+              <span id="brandingInfo" class="text-xs text-slate-500"></span>
+            </div>
+          </form>
+          <div id="brandingReadonly" class="hidden text-sm text-slate-600 bg-slate-50 border border-slate-200 rounded-xl p-3 mt-3"></div>
+        </section>
+
+        <!-- Debug -->
+        <section class="border-t border-gray-200 pt-6">
+          <h3 class="font-semibold text-lg text-primary mb-3">🔧 Debug</h3>
+          <div id="debugPanel" class="text-xs text-slate-600 bg-yellow-50 border border-yellow-200 rounded-xl px-3 py-2"></div>
+        </section>
       </div>
-      <div id="debugPanel" class="hidden text-xs text-slate-600 bg-yellow-50 border border-yellow-200 rounded-xl px-3 py-2 mt-3"></div>
-    </details>
-  </section>
+    </div>
+  </div>
 
   <!-- Modal: Buchung -->
   <div id="modalBooking" class="fixed inset-0 z-50 bg-black/40 hidden items-center justify-center p-4">

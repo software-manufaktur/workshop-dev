@@ -674,9 +674,10 @@
   const modalConfirmDelete = qs("#modalConfirmDelete");
   const modalBackupImport = qs("#modalBackupImport");
   const modalBackupHelp = qs("#modalBackupHelp");
+  const modalSettings = qs("#modalSettings");
   function openModal(el) {
     if (!el) return;
-    [modalBooking, modalSlots, modalBackupImport].forEach((m) => {
+    [modalBooking, modalSlots, modalBackupImport, modalBackupHelp, modalSettings].forEach((m) => {
       if (!m) return;
       m.classList.add("hidden");
       m.classList.remove("flex");
@@ -690,12 +691,13 @@
     el.classList.remove("flex");
   }
   document.addEventListener("keydown", (e) => {
-    if (e.key === "Escape") [modalBooking, modalSlots, modalConfirmDelete, modalBackupImport, modalBackupHelp].forEach((m) => closeModal(m));
+    if (e.key === "Escape") [modalBooking, modalSlots, modalConfirmDelete, modalBackupImport, modalBackupHelp, modalSettings].forEach((m) => closeModal(m));
   });
   qsa("[data-close='booking']").forEach((b) => b.addEventListener("click", () => closeModal(modalBooking)));
   qsa("[data-close='slots']").forEach((b) => b.addEventListener("click", () => closeModal(modalSlots)));
   qsa("[data-close='backup']").forEach((b) => b.addEventListener("click", () => closeModal(modalBackupImport)));
   qsa("[data-close='backuphelp']").forEach((b) => b.addEventListener("click", () => closeModal(modalBackupHelp)));
+  qsa("[data-close='settings']").forEach((b) => b.addEventListener("click", () => closeModal(modalSettings)));
   modalSlots?.addEventListener("click", (e) => {
     if (e.target === modalSlots) closeModal(modalSlots);
   });
@@ -1467,6 +1469,14 @@ Stefanie`;
     closeMobileMenu();
     qs("#btnArchiveView")?.click();
   });
+  
+  /* ---------- Settings ---------- */
+  qs("#btnSettings")?.addEventListener("click", () => openModal(modalSettings));
+  qs("#m_btnSettings")?.addEventListener("click", () => {
+    closeMobileMenu();
+    openModal(modalSettings);
+  });
+  
   mBtnLogin?.addEventListener("click", () => {
     closeMobileMenu();
     const email = qs("#authEmail");
