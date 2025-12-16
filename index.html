@@ -78,11 +78,7 @@
       <div class="flex items-center gap-2">
         <button id="btnMenu" class="sm:hidden p-2 rounded-xl bg-soft hover:bg-mid text-dark" aria-label="Menue">☰</button>
         <div class="hidden sm:flex gap-2">
-          <button id="btnExportCsv" type="button" class="px-3 py-2 rounded-xl bg-soft hover:bg-mid text-sm text-dark">CSV Export</button>
-          <button id="btnBackup" type="button" class="px-3 py-2 rounded-xl text-white btn-primary hover:opacity-90 text-sm">JSON Backup</button>
-          <label for="fileRestore" class="px-3 py-2 rounded-xl bg-soft hover:bg-mid text-sm cursor-pointer text-dark">Wiederherstellen</label>
-          <input type="file" id="fileRestore" accept="application/json" class="hidden">
-          <button id="btnArchiveView" type="button" class="px-3 py-2 rounded-xl bg-soft hover:bg-mid text-sm text-dark">Archiv</button>
+          <button id="btnArchiveView" type="button" class="px-3 py-2 rounded-xl bg-soft hover:bg-mid text-sm text-dark">📦 Archiv</button>
           <button id="btnSettings" type="button" class="px-3 py-2 rounded-xl bg-soft hover:bg-mid text-sm text-dark">⚙️ Einstellungen</button>
           <button id="btnQuickStart" type="button" class="px-3 py-2 rounded-xl bg-soft hover:bg-mid text-sm text-dark" title="Schnellstart-Anleitung">❓ Hilfe</button>
         </div>
@@ -101,11 +97,7 @@
       <div class="text-xs uppercase tracking-wide text-slate-500">Hauptbereich</div>
       <button id="m_btnQuickStart" type="button" class="px-3 py-3 rounded-xl bg-soft text-left text-dark">❓ Hilfe & Schnellstart</button>
       <button id="m_btnManageSlots" type="button" class="px-3 py-3 rounded-xl bg-soft text-left text-dark" data-label-terms-action>Termin anlegen</button>
-      <button id="m_btnExportCsv" type="button" class="px-3 py-3 rounded-xl bg-soft text-left text-dark">CSV Export</button>
-      <button id="m_btnBackup" type="button" class="px-3 py-3 rounded-xl bg-soft text-left text-dark">Backup exportieren</button>
-      <label for="m_fileRestore" class="px-3 py-3 rounded-xl bg-soft text-left cursor-pointer text-dark">Backup importieren</label>
-      <input type="file" id="m_fileRestore" accept="application/json" class="hidden">
-      <button id="m_btnArchiveView" type="button" class="px-3 py-3 rounded-xl bg-soft text-left text-dark">Archiv</button>
+      <button id="m_btnArchiveView" type="button" class="px-3 py-3 rounded-xl bg-soft text-left text-dark">📦 Archiv</button>
       <button id="m_btnSettings" type="button" class="px-3 py-3 rounded-xl bg-soft text-left text-dark">⚙️ Einstellungen</button>
 
       <div class="text-xs uppercase tracking-wide text-slate-500 mt-4">Konto</div>
@@ -188,6 +180,20 @@
           <div class="bg-blue-50 border border-blue-200 rounded-xl p-4 mb-4 text-sm">
             <p><strong>Automatische Sicherung:</strong> Alle Änderungen werden sofort auf deinem Gerät gespeichert.</p>
             <p class="mt-1"><strong>Online-Speicherung:</strong> Bei Anmeldung werden deine Daten automatisch online gesichert.</p>
+          </div>
+          
+          <!-- Export & Backup Aktionen -->
+          <div class="mb-6 flex flex-wrap gap-3">
+            <button id="btnExportCsv" type="button" class="px-4 py-2 rounded-xl bg-emerald-600 text-white hover:bg-emerald-700 text-sm flex items-center gap-2">
+              <span>📊</span> CSV exportieren
+            </button>
+            <button id="btnBackup" type="button" class="px-4 py-2 rounded-xl text-white btn-primary hover:opacity-90 text-sm flex items-center gap-2">
+              <span>💾</span> JSON Backup
+            </button>
+            <label for="fileRestore" class="px-4 py-2 rounded-xl bg-blue-600 text-white hover:bg-blue-700 text-sm cursor-pointer flex items-center gap-2">
+              <span>📥</span> Backup wiederherstellen
+            </label>
+            <input type="file" id="fileRestore" accept="application/json" class="hidden">
           </div>
           
           <div class="space-y-4">
