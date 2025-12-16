@@ -1474,7 +1474,10 @@ Stefanie`;
   });
   
   /* ---------- Settings ---------- */
-  qs("#btnSettings")?.addEventListener("click", () => openModal(modalSettings));
+  qs("#btnSettings")?.addEventListener("click", (e) => {
+    console.log("Settings button clicked!");
+    openModal(modalSettings);
+  });
   qs("#m_btnSettings")?.addEventListener("click", () => {
     closeMobileMenu();
     openModal(modalSettings);
